@@ -5,9 +5,9 @@
  * cells are solid ink-like colour, unlived ones are just an outline, and the
  * grid is given room to breathe rather than being packed tight.
  *
- * Cell colour is driven entirely by custom properties so the palette can be
- * swapped (classic green/red, or a blue/orange set that survives the most
- * common forms of colour blindness) without touching markup or data.
+ * Cell colour is driven entirely by custom properties, so the whole palette
+ * can be swapped — light, dark, or the colour-blind variant — without touching
+ * markup or data.
  */
 
 /* ------------------------------------------------------------------ *

@@ -4,9 +4,9 @@
  * No dependencies, no build step. Everything hangs off window.LT so the file
  * works when loaded as a classic script (including from file://).
  *
- * Marks are stored semantically as 'good' / 'bad' rather than 'green' / 'red',
- * so the palette can be swapped (e.g. for colour-blind users) without touching
- * the data.
+ * Marks are stored semantically as 'good' / 'bad' rather than as colours, so
+ * the chart can be restyled — or switched to the colour-blind palette —
+ * without migrating anything.
  */
 (function (global) {
   'use strict';
@@ -474,7 +474,7 @@
    *   months -> years  (a year is the majority of its constituent months)
    *
    * Note that each level counts *verdicts* from the level below, not raw days.
-   * A month with four green weeks and one red week is green regardless of how
+   * A month with four good weeks and one rough week is good regardless of how
    * many individual days sat inside those weeks.
    */
   function aggregate(state) {
