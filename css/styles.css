@@ -288,8 +288,8 @@ kbd {
 
 /* The narrow views centre themselves, and the x-axis label has to travel with
    them or it ends up floating off to the left of the grid it describes. */
-.chart-area--months { max-width: 400px; }
-.chart-area--years { max-width: 430px; }
+.chart-area--months { max-width: 520px; }
+.chart-area--years { max-width: 680px; }
 
 .axis-x {
   margin: 0 0 0.4rem 2.9rem;
@@ -390,36 +390,28 @@ kbd {
 .chart--years .slot + .slot { margin-left: 0; }
 
 /* Weeks — the classic view, 52 columns. */
-/* In the years view each cell sits inside a phase-coloured pad. Zero gap
-   between pads is what makes a run of years read as one continuous block. */
-.slot {
-  display: block;
-  padding: 3px;
-  border-radius: 3px;
-}
-
-.chart--years .cells { gap: 0; }
-.chart--years .slot + .slot { margin-left: 0; }
-
-/* Weeks — the classic view, 52 columns. */
 .chart--weeks {
   --cell-min: 5px;
   --gap: 2px;
 }
 
-/* Months — one row per year, twelve to a row. Kept compact: at 90 rows,
-   every extra pixel of cell height is 90px of scrolling. */
+/* Months — twelve to a row.
+   Cells are square, so width buys height: this view has 90 rows, and every
+   extra pixel of cell size costs ~90px of scrolling. Hence wide enough to sit
+   comfortably beside the weeks view, but not the full 780px, which would make
+   the chart roughly twice as tall as it is now for no extra legibility. */
 .chart--months {
   --cell-min: 10px;
-  --gap: 3px;
-  max-width: 330px;
+  --gap: 4px;
+  max-width: 520px;
 }
 
-/* Years — ten to a row, the chunkiest cells. */
+/* Years — ten to a row. Only nine rows exist, so width is nearly free here and
+   this one can run close to the full chart width. */
 .chart--years {
   --cell-min: 12px;
-  --gap: 4px;
-  max-width: 360px;
+  --gap: 5px;
+  max-width: 680px;
 }
 
 /* ------------------------------------------------------------------ *

@@ -215,9 +215,14 @@ ok(`devices converge regardless of gossip order (${convergent}/${TRIALS})`, conv
 
   // A device whose clock is years behind must still issue stamps that beat
   // what it has already seen, or it would lose every conflict forever.
+  //
+  // Capture the future stamp once. Calling Date.now() again for the comparison
+  // makes the threshold 1ms higher whenever the clock ticks mid-test, which
+  // failed roughly 1 run in 15 for no reason at all.
   const slow = blank();
-  LT.observeStamp(slow, Date.now() + 5 * 365 * 864e5);
-  ok('stamp beats an observed future clock', LT.nextStamp(slow) > Date.now() + 5 * 365 * 864e5);
+  const observed = Date.now() + 5 * 365 * 864e5;
+  LT.observeStamp(slow, observed);
+  ok('stamp beats an observed future clock', LT.nextStamp(slow) > observed);
 
   const behind = blank();
   behind.meta.hlc = 0;
