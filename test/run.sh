@@ -2,7 +2,6 @@
 # Runs every suite and reports a combined result.
 #
 #   ./test/run.sh                 # core, merge, sync (ui skips without jsdom)
-#   TZ=America/New_York ./test/run.sh
 #
 # The ui suite needs jsdom, which the app itself does not depend on:
 #   npm i jsdom && NODE_PATH=./node_modules ./test/run.sh

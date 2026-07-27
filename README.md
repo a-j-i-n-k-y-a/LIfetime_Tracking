@@ -12,10 +12,14 @@ which draws the grid but doesn't let you record anything in it.
 
 1. Open Settings and enter your date of birth.
 2. Each day, hit **Good day** or **Rough day** — or press <kbd>G</kbd> / <kbd>R</kbd>.
-3. Switch between **Days / Weeks / Months / Years** to zoom out.
+3. Switch between **Days / Weeks / Months / Years** to zoom out. Each view has its own
+   URL (`#months`), so you can bookmark the one you like.
 
 Missed a few days? Change the date in the Today card and log backwards, or click any past
 square in the Days view to cycle it green → red → blank.
+
+Every view draws the same square cell, only at a different size — a week and a year look
+alike so the colour is the only thing that changes between them.
 
 ## How the roll-up works
 
@@ -50,6 +54,31 @@ month containing its **midpoint day**. Every month ends up owning 4 or 5 weeks.
 
 A 29 February birthday falls on 1 March in non-leap years.
 
+## Phases of your life
+
+Chapters, marked as age ranges — childhood, college, your thirties, a sabbatical. Edit them
+in **Settings → Phases of your life**: name, start age, end age, colour.
+
+They show up in every view, scaled to whatever that view is showing:
+
+- A **coloured bar in the gutter**, beside the age labels. In the days, weeks and months
+  views a row is one year of life, so consecutive years in the same phase merge into one
+  continuous bar down the side of the chart.
+- A **faint tint** behind the cells, carrying the phase across the full width.
+- In the **years** view a row is a whole decade, so a phase boundary can land mid-row and a
+  vertical bar cannot express it. Each year sits on a coloured pad instead, and a run of
+  years reads like highlighted text.
+- A **legend** under the chart naming each phase, with how many days you logged in it and
+  what share of them were good — so you can see that your twenties ran 55% good while
+  college ran 47%.
+
+Ranges are half-open: `20–23` covers ages 20, 21 and 22, so a phase ending at 23 and one
+starting at 23 meet without overlapping. Gaps are allowed and simply render untinted. If two
+phases do overlap, the earlier-starting one owns the shared years.
+
+Phases sync between devices like any other setting, and clearing them all is respected
+rather than silently reset to the defaults.
+
 ## Your data
 
 Everything lives in this browser's `localStorage` under `lifetime-tracking-v1`. There is no
@@ -61,6 +90,7 @@ account and no server. This repo is public; your log is not.
   "dob": "1998-03-15",
   "lifespan": 90,
   "palette": "classic",
+  "phases": [ { "label": "Twenties", "from": 23, "to": 30, "color": "#c9805f" } ],
   "entries": { "2026-07-27": "good", "2026-07-26": "bad" },
   "meta": {
     "entries":  { "2026-07-27": 1753600000000 },  // when each day was last written
@@ -161,7 +191,7 @@ sw.js                   service worker (offline + installable)
 manifest.webmanifest    PWA metadata
 icons/                  generated PNG app icons
 tools/make_icons.py     regenerates those icons (stdlib only)
-test/                   179 assertions; see below
+test/                   248 assertions; see below
 ```
 
 `core.js` touches no DOM, and `sync.js` contains no conflict logic — that lives in
@@ -169,19 +199,20 @@ test/                   179 assertions; see below
 
 ```sh
 ./test/run.sh
-
-# the date handling is timezone-sensitive, so it is worth running elsewhere too
-TZ=Asia/Kolkata     ./test/run.sh
-TZ=America/New_York ./test/run.sh   # DST
-TZ=Pacific/Auckland ./test/run.sh   # southern-hemisphere DST
 ```
+
+Dates are keyed to the **local** calendar, never UTC. That matters at UTC+5:30: the common
+`new Date().toISOString().slice(0,10)` shortcut would file everything logged before 5:30am
+in India under the previous day. `dayDiff` also normalises through `Date.UTC` so a DST
+transition can't produce a 23-hour day — irrelevant in India, which has no DST, but it keeps
+the chart honest if you ever log while travelling.
 
 | Suite | | Covers |
 |---|---:|---|
-| `core.test.js` | 66 | DST-safe day counting, leap years, 29 Feb birthdays, week/month clamping at the end of a life-year, tie propagation, streaks across gaps, malformed input |
-| `merge.test.js` | 31 | Tombstones, v1 migration, and the CRDT laws over 400 randomised state pairs |
+| `core.test.js` | 92 | Local-calendar day counting, leap years, 29 Feb birthdays, week/month clamping at the end of a life-year, tie propagation, streaks across gaps, malformed input, phase ranges and per-phase stats |
+| `merge.test.js` | 35 | Tombstones, v1 migration, phase sync, and the CRDT laws over 400 randomised state pairs |
 | `sync.test.js` | 38 | Two simulated devices against a fake Gist API: offline edits, conflicts, deletes, 304s, truncated gists, 401/403/404, corrupt remote data |
-| `ui.test.js` | 44 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline |
+| `ui.test.js` | 83 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline, uniform cell geometry, phase shading and the phase editor |
 
 `ui.test.js` needs jsdom and skips cleanly without it; nothing else has dependencies:
 

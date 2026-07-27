@@ -139,8 +139,27 @@
    * ------------------------------------------------------------------ */
 
   var VERSION = 2;
-  var SETTINGS = ['dob', 'lifespan', 'palette'];
+  var SETTINGS = ['dob', 'lifespan', 'palette', 'phases'];
   var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  var HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+  /**
+   * Chapters of a life, as age ranges. Half-open: [from, to), so a phase ending
+   * at 20 and one starting at 20 meet without overlapping.
+   *
+   * Gaps are allowed and simply render untinted — the point is to mark the
+   * stretches that mean something to you, not to tile the whole lifespan.
+   */
+  var DEFAULT_PHASES = [
+    { label: 'Childhood',   from: 0,  to: 13, color: '#7c9ec9' },
+    { label: 'Teenage',     from: 13, to: 20, color: '#5fae9b' },
+    { label: 'College',     from: 20, to: 23, color: '#c9a25f' },
+    { label: 'Twenties',    from: 23, to: 30, color: '#c9805f' },
+    { label: 'Thirties',    from: 30, to: 40, color: '#ab74a4' },
+    { label: 'Forties',     from: 40, to: 50, color: '#7385b5' },
+    { label: 'Fifties',     from: 50, to: 60, color: '#7e9e6e' },
+    { label: 'Later years', from: 60, to: 90, color: '#8e8e96' }
+  ];
 
   /**
    * State shape (v2):
@@ -160,15 +179,97 @@
       dob: null,
       lifespan: 90,
       palette: 'classic',
+      phases: JSON.parse(JSON.stringify(DEFAULT_PHASES)),
       entries: {},
       meta: { entries: {}, settings: {}, hlc: 0 }
     };
   }
 
+  /** One phase entry, cleaned up, or null if it is unusable. */
+  function cleanPhase(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    var from = Math.floor(Number(raw.from));
+    var to = Math.floor(Number(raw.to));
+
+    if (!isFinite(from) || !isFinite(to)) return null;
+    if (from < 0 || to > 130 || from >= to) return null;
+
+    return {
+      label: String(raw.label == null ? '' : raw.label).slice(0, 40),
+      from: from,
+      to: to,
+      color: HEX_RE.test(raw.color) ? raw.color : '#8e8e96'
+    };
+  }
+
+  function cleanPhases(raw) {
+    if (!Array.isArray(raw)) return null;
+
+    return raw
+      .map(cleanPhase)
+      .filter(Boolean)
+      .slice(0, 20)
+      .sort(function (a, b) { return a.from - b.from || a.to - b.to; });
+  }
+
   function validSetting(field, value) {
     if (field === 'dob') return value === null || (typeof value === 'string' && DATE_RE.test(value));
     if (field === 'lifespan') return typeof value === 'number' && value >= 1 && value <= 130;
+    if (field === 'phases') return Array.isArray(value);
     return value === 'classic' || value === 'cbSafe';
+  }
+
+  /**
+   * The phase an age falls in. Ranges are half-open and sorted, and the first
+   * match wins — so if two phases overlap, the earlier-starting one owns the
+   * shared years rather than the chart flickering between them.
+   */
+  function phaseAt(phases, age) {
+    if (!phases) return null;
+
+    for (var i = 0; i < phases.length; i++) {
+      if (age >= phases[i].from && age < phases[i].to) return phases[i];
+    }
+    return null;
+  }
+
+  /**
+   * Per-phase totals, so the legend can say "your twenties ran 62% good"
+   * rather than just naming a colour.
+   */
+  function phaseStats(state) {
+    var phases = state.phases || [];
+    var buckets = phases.map(function (phase) {
+      return { phase: phase, good: 0, bad: 0, logged: 0, goodPercent: 0, elapsed: 0 };
+    });
+
+    if (!state.dob) return buckets;
+    var dob = fromKey(state.dob);
+
+    Object.keys(state.entries).forEach(function (key) {
+      var pos = lifePosition(dob, fromKey(key));
+      if (!pos) return;
+
+      for (var i = 0; i < phases.length; i++) {
+        if (pos.age >= phases[i].from && pos.age < phases[i].to) {
+          tallyMark(buckets[i], state.entries[key]);
+          buckets[i].logged += 1;
+          break;
+        }
+      }
+    });
+
+    var age = lifePosition(dob, today());
+
+    buckets.forEach(function (bucket) {
+      bucket.goodPercent = bucket.logged ? Math.round((bucket.good / bucket.logged) * 100) : 0;
+      // How far into this phase you are: 0 before it, 1 once it is behind you.
+      bucket.elapsed = !age ? 0
+        : Math.max(0, Math.min(1, (age.age - bucket.phase.from) / (bucket.phase.to - bucket.phase.from)));
+    });
+
+    return buckets;
   }
 
   function sanitize(raw) {
@@ -177,6 +278,15 @@
 
     SETTINGS.forEach(function (field) {
       var value = raw[field];
+
+      if (field === 'phases') {
+        // An explicit empty array means "no phases, thanks" and must be kept;
+        // only a missing or malformed value falls back to the defaults.
+        var phases = cleanPhases(value);
+        if (phases) state.phases = phases;
+        return;
+      }
+
       if (field === 'lifespan' && typeof value === 'number') value = Math.floor(value);
       if (validSetting(field, value) && value !== null) state[field] = value;
     });
@@ -259,7 +369,7 @@
 
   function setSetting(state, field, value) {
     if (SETTINGS.indexOf(field) === -1 || !validSetting(field, value)) return state;
-    state[field] = value;
+    state[field] = field === 'phases' ? cleanPhases(value) : value;
     state.meta.settings[field] = nextStamp(state);
     return state;
   }
@@ -513,6 +623,11 @@
     verdict: verdict,
     aggregate: aggregate,
     stats: stats,
+
+    DEFAULT_PHASES: DEFAULT_PHASES,
+    cleanPhases: cleanPhases,
+    phaseAt: phaseAt,
+    phaseStats: phaseStats,
 
     defaultState: defaultState,
     sanitize: sanitize,

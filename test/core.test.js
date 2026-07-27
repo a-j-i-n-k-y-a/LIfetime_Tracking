@@ -186,5 +186,76 @@ ok('feb29 life years are all 365 or 366',
    [0, 1, 2, 3, 4, 5].every(n => [365, 366].includes(LT.daysInLifeYear(leapDob, n))),
    [0, 1, 2, 3, 4, 5].map(n => LT.daysInLifeYear(leapDob, n)).join(','));
 
+/* --- phases ---------------------------------------------------------- */
+const P = LT.DEFAULT_PHASES;
+eq('phaseAt start of range', LT.phaseAt(P, 0).label, 'Childhood');
+eq('phaseAt inside range', LT.phaseAt(P, 25).label, 'Twenties');
+// Ranges are half-open, so the boundary age belongs to the *next* phase.
+eq('phaseAt boundary goes to next phase', LT.phaseAt(P, 13).label, 'Teenage');
+eq('phaseAt end boundary', LT.phaseAt(P, 20).label, 'College');
+eq('phaseAt past the last phase', LT.phaseAt(P, 200), null);
+eq('phaseAt with no phases', LT.phaseAt([], 5), null);
+eq('phaseAt tolerates null', LT.phaseAt(null, 5), null);
+
+// Defaults must not overlap, or a year would belong to two phases.
+let overlap = null;
+for (let i = 1; i < P.length; i++) if (P[i].from < P[i - 1].to) overlap = [P[i - 1], P[i]];
+ok('default phases do not overlap', overlap === null, JSON.stringify(overlap));
+
+// Overlapping user phases: first (earliest-starting) wins, deterministically.
+const overlapping = LT.cleanPhases([
+  { label: 'late', from: 20, to: 40, color: '#111111' },
+  { label: 'early', from: 10, to: 30, color: '#222222' }
+]);
+eq('overlaps sorted by start', overlapping.map(p => p.label), ['early', 'late']);
+eq('first match wins on overlap', LT.phaseAt(overlapping, 25).label, 'early');
+
+eq('cleanPhases rejects from >= to', LT.cleanPhases([{ label: 'x', from: 9, to: 9 }]).length, 0);
+eq('cleanPhases rejects negative', LT.cleanPhases([{ label: 'x', from: -5, to: 9 }]).length, 0);
+eq('cleanPhases rejects beyond 130', LT.cleanPhases([{ label: 'x', from: 0, to: 999 }]).length, 0);
+eq('cleanPhases rejects non-array', LT.cleanPhases('nope'), null);
+eq('cleanPhases caps at 20', LT.cleanPhases(
+  Array.from({ length: 40 }, (_, i) => ({ label: 'p' + i, from: i, to: i + 1 }))).length, 20);
+eq('cleanPhases defaults a bad colour',
+   LT.cleanPhases([{ label: 'x', from: 0, to: 9, color: 'octarine' }])[0].color, '#8e8e96');
+eq('cleanPhases keeps a good colour',
+   LT.cleanPhases([{ label: 'x', from: 0, to: 9, color: '#Ab12Cd' }])[0].color, '#Ab12Cd');
+eq('cleanPhases truncates a long label',
+   LT.cleanPhases([{ label: 'z'.repeat(200), from: 0, to: 9 }])[0].label.length, 40);
+eq('cleanPhases coerces numeric strings',
+   LT.cleanPhases([{ label: 'x', from: '3', to: '7' }])[0].from, 3);
+
+/* --- phase stats ------------------------------------------------------ */
+{
+  const dobKey = '1998-03-15';
+  const at = (age, dayOffset) =>
+    LT.toKey(LT.addDays(LT.anniversary(LT.fromKey(dobKey), age), dayOffset));
+
+  const st = LT.sanitize({
+    dob: dobKey,
+    phases: [
+      { label: 'A', from: 0, to: 10, color: '#111111' },
+      { label: 'B', from: 20, to: 30, color: '#222222' }
+    ],
+    entries: {
+      [at(5, 0)]: 'good', [at(5, 1)]: 'good', [at(5, 2)]: 'bad',
+      [at(25, 0)]: 'bad',
+      [at(15, 0)]: 'good'   // falls in the gap between phases
+    }
+  });
+
+  const buckets = LT.phaseStats(st);
+  eq('one bucket per phase', buckets.length, 2);
+  eq('phase A tallies', [buckets[0].good, buckets[0].bad, buckets[0].logged], [2, 1, 3]);
+  eq('phase A good percent', buckets[0].goodPercent, 67);
+  eq('phase B tallies', [buckets[1].good, buckets[1].bad, buckets[1].logged], [0, 1, 1]);
+  ok('days in a gap belong to no phase',
+     buckets[0].logged + buckets[1].logged === 4);
+
+  eq('phaseStats with no dob is empty but shaped',
+     LT.phaseStats(LT.sanitize({ phases: [{ label: 'A', from: 0, to: 5 }] }))[0].logged, 0);
+  eq('phaseStats with no phases', LT.phaseStats(LT.sanitize({ dob: dobKey, phases: [] })).length, 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

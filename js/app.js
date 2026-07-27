@@ -28,12 +28,12 @@
     months: {
       unit: 'Months',
       axis: 'Month of the year →',
-      rollup: 'Each circle is one month — green when more of its weeks were green than red.'
+      rollup: 'Each square is one month — green when more of its weeks were green than red.'
     },
     years: {
       unit: 'Years',
       axis: 'Ten years per row →',
-      rollup: 'Each diamond is one year — green when more of its months were green than red.'
+      rollup: 'Each square is one year — green when more of its months were green than red.'
     }
   };
 
@@ -56,11 +56,12 @@
       'titleUnit', 'subtitle', 'todayLabel', 'todayDate', 'logDate',
       'btnGood', 'btnBad', 'btnClear',
       'statLogged', 'statGood', 'statBad', 'statPercent', 'statStreak', 'statBest',
-      'rollup', 'axisX', 'chart', 'emptyNote', 'status', 'settings',
+      'rollup', 'axisX', 'chart', 'chartArea', 'emptyNote', 'status', 'settings',
       'dob', 'lifespan', 'palette',
       'btnExport', 'btnImport', 'btnPrint', 'btnReset', 'importFile',
       'syncBadge', 'syncSummary', 'syncConnect', 'syncActive',
-      'ghToken', 'btnConnect', 'btnSyncNow', 'btnDisconnect', 'gistLink'
+      'ghToken', 'btnConnect', 'btnSyncNow', 'btnDisconnect', 'gistLink',
+      'phaseLegend', 'phaseRows', 'phaseEmpty', 'btnAddPhase', 'btnResetPhases'
     ].forEach(function (id) { el[id] = document.getElementById(id); });
 
     el.views = document.querySelectorAll('.view');
@@ -76,9 +77,13 @@
 
     bindEvents();
 
+    var fromHash = location.hash.replace('#', '');
+    if (VIEWS[fromHash]) view = fromHash;
+
     if (!state.dob) el.settings.open = true;
 
     render();
+    initPhaseEditor();
     initSync();
     registerServiceWorker();
   }
@@ -96,6 +101,9 @@
     Array.prototype.forEach.call(el.views, function (button) {
       button.addEventListener('click', function () {
         view = button.dataset.view;
+        // replaceState, not a hash assignment — switching views should not pile
+        // up history entries you have to back out of one by one.
+        history.replaceState(null, '', '#' + view);
         render();
       });
     });
@@ -175,6 +183,7 @@
     agg = LT.aggregate(state);
     renderToday();
     renderStats();
+    renderPhaseLegend();
     paintChart();
 
     say(mark
@@ -206,6 +215,7 @@
     agg = LT.aggregate(state);
 
     document.body.dataset.palette = state.palette;
+    el.chartArea.className = 'chart-area chart-area--' + view;
     el.titleUnit.textContent = VIEWS[view].unit;
     el.axisX.textContent = VIEWS[view].axis;
     el.rollup.textContent = VIEWS[view].rollup;
@@ -218,6 +228,7 @@
     renderToday();
     renderStats();
     renderSubtitle();
+    renderPhaseLegend();
     buildChart();
     paintChart();
   }
@@ -323,7 +334,7 @@
   }
 
   function buildChart() {
-    var key = [view, state.dob, state.lifespan].join('|');
+    var key = [view, state.dob, state.lifespan, JSON.stringify(state.phases)].join('|');
     if (key === builtKey) return;
     builtKey = key;
 
@@ -349,8 +360,10 @@
     var index = 0;
     cells = [];
 
-    plan.forEach(function (row) {
-      html.push('<div class=row><span class=lbl>' + row.label + '</span><div class=cells>');
+    plan.forEach(function (row, rowIndex) {
+      html.push('<div class=row><span class=lbl>' + row.label + '</span>' +
+        railFor(row, plan[rowIndex - 1], plan[rowIndex + 1]) +
+        '<div class=cells style="' + tintFor(row) + '">');
 
       for (var i = 0; i < row.count; i++) {
         var record = { age: row.startAge, idx: i, dateKey: null, future: false, el: null };
@@ -363,7 +376,11 @@
         }
 
         cells.push(record);
-        html.push('<i data-i=' + index + '></i>');
+        if (view === 'years') {
+          html.push(slotFor(record.age) + '<i data-i=' + index + '></i></span>');
+        } else {
+          html.push('<i data-i=' + index + '></i>');
+        }
         index++;
       }
 
@@ -399,6 +416,114 @@
 
   function maxOf(plan) {
     return plan.reduce(function (max, row) { return Math.max(max, row.count); }, 0);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Phases
+   * ------------------------------------------------------------------ */
+
+  // The gutter rail is the primary phase cue and the row tint only carries it
+  // across the width of the chart, so it stays faint — much stronger and the
+  // empty future decades read as solid colour bands that drown the data.
+  //
+  // The years view has no rail (a row there is a decade, not an age), so it
+  // gets a stronger block behind each cell instead and needs no row tint.
+  var TINT_ALPHA = 0.1;
+  var BLOCK_ALPHA = 0.28;
+
+  function rgba(hex, alpha) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  }
+
+  /** Every age this row covers. One age for most views; a decade for years. */
+  function agesOf(row) {
+    var ages = [];
+    var count = view === 'years' ? row.count : 1;
+    for (var i = 0; i < count; i++) ages.push(row.startAge + i);
+    return ages;
+  }
+
+  /**
+   * Background tint behind a row's cells.
+   *
+   * In days/weeks/months a row is a single year of life, so it is one flat
+   * colour. The years view packs ten years into a row, so a phase boundary can
+   * fall mid-row — a hard-stop gradient puts the change exactly at the right
+   * column without needing a wrapper element around all 33,000 day cells.
+   */
+  function tintFor(row) {
+    if (view === 'years') return '';
+
+    var phase = LT.phaseAt(state.phases || [], row.startAge);
+    return phase ? 'background:' + rgba(phase.color, TINT_ALPHA) : '';
+  }
+
+  /**
+   * The years view packs a decade into each row, so a phase boundary can fall
+   * mid-row and a vertical rail cannot express it. Each year cell instead sits
+   * on a phase-coloured pad; neighbouring years in the same phase butt together
+   * into a continuous block, which reads like highlighted text.
+   */
+  function slotFor(age) {
+    var phase = LT.phaseAt(state.phases || [], age);
+    if (!phase) return '<span class=slot>';
+
+    return '<span class=slot style="background:' + rgba(phase.color, BLOCK_ALPHA) +
+           '" title="' + escapeHtml(phase.label || 'Phase') + ' · ages ' +
+           phase.from + '–' + phase.to + '">';
+  }
+
+  /**
+   * The solid bar in the gutter. Only meaningful where a row is one age —
+   * in the years view a row spans a decade, so the gradient above carries the
+   * phase instead and the rail is left blank.
+   */
+  function railFor(row, previous, next) {
+    if (view === 'years') return '<span class="rail rail--muted"></span>';
+
+    var phase = LT.phaseAt(state.phases || [], row.startAge);
+    if (!phase) return '<span class=rail></span>';
+
+    var startsHere = !previous || LT.phaseAt(state.phases, previous.startAge) !== phase;
+    var endsHere = !next || LT.phaseAt(state.phases, next.startAge) !== phase;
+    var edge = (startsHere ? ' rail--first' : '') + (endsHere ? ' rail--last' : '');
+
+    return '<span class="rail' + edge + '" style="background:' + rgba(phase.color, 0.85) +
+           '" title="' + escapeHtml(phase.label || 'Phase') + ' · ages ' +
+           phase.from + '–' + phase.to + '"></span>';
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"]/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+    });
+  }
+
+  function renderPhaseLegend() {
+    var buckets = LT.phaseStats(state);
+
+    if (!buckets.length) {
+      el.phaseLegend.innerHTML = '';
+      el.phaseLegend.hidden = true;
+      return;
+    }
+
+    el.phaseLegend.hidden = false;
+    el.phaseLegend.innerHTML = buckets.map(function (bucket) {
+      var phase = bucket.phase;
+      var detail = bucket.logged
+        ? bucket.logged + ' logged · ' + bucket.goodPercent + '% good'
+        : 'nothing logged';
+
+      return '<span class="phase-item"' +
+        ' title="' + escapeHtml(phase.label || 'Phase') + ': ' + detail + '">' +
+        '<i class="phase-swatch" style="background:' + rgba(phase.color, 0.85) + '"></i>' +
+        '<span class="phase-name">' + escapeHtml(phase.label || '—') + '</span>' +
+        '<span class="phase-range">' + phase.from + '–' + phase.to + '</span>' +
+        '<span class="phase-stat">' + detail + '</span>' +
+        '</span>';
+    }).join('');
   }
 
   /**
@@ -483,17 +608,19 @@
     if (!cell || !state.dob) return '';
 
     var dob = LT.fromKey(state.dob);
+    var phase = LT.phaseAt(state.phases || [], cell.age);
+    var chapter = phase && phase.label ? ' · ' + phase.label : '';
 
     if (view === 'days') {
       var mark = state.entries[cell.dateKey];
-      return prettyDate(cell.dateKey) + ' · age ' + cell.age + ' · ' +
+      return prettyDate(cell.dateKey) + ' · age ' + cell.age + chapter + ' · ' +
         (mark === LT.GOOD ? 'good' : mark === LT.BAD ? 'rough' : cell.future ? 'ahead of you' : 'not logged');
     }
 
     if (view === 'years') {
       var year = agg.years[cell.age];
-      return 'Age ' + cell.age + ' · ' + LT.anniversary(dob, cell.age).getFullYear() + ' · ' +
-        tallyText(year, 'month');
+      return 'Age ' + cell.age + ' · ' + LT.anniversary(dob, cell.age).getFullYear() + chapter +
+        ' · ' + tallyText(year, 'month');
     }
 
     if (view === 'weeks') {
@@ -502,14 +629,14 @@
       var end = cell.idx === LT.WEEKS_PER_YEAR - 1
         ? LT.addDays(LT.anniversary(dob, cell.age + 1), -1)
         : LT.addDays(start, 6);
-      return 'Age ' + cell.age + ', week ' + (cell.idx + 1) + ' · ' +
+      return 'Age ' + cell.age + ', week ' + (cell.idx + 1) + chapter + ' · ' +
         prettyDate(LT.toKey(start)) + ' – ' + prettyDate(LT.toKey(end)) + ' · ' +
         tallyText(week, 'day');
     }
 
     var month = agg.months[cell.age][cell.idx];
     var range = weekRangeForMonth(cell.idx);
-    return 'Age ' + cell.age + ', month ' + (cell.idx + 1) +
+    return 'Age ' + cell.age + ', month ' + (cell.idx + 1) + chapter +
       ' · weeks ' + (range.first + 1) + '–' + (range.last + 1) + ' · ' +
       tallyText(month, 'week');
   }
@@ -625,6 +752,100 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Phase editor
+   * ------------------------------------------------------------------ */
+
+  function renderPhaseEditor() {
+    var phases = state.phases || [];
+
+    el.phaseRows.innerHTML = phases.map(function (phase, i) {
+      return '<div class="phase-edit" data-i="' + i + '">' +
+        '<input type="color" class="pe-color" value="' + phase.color +
+          '" aria-label="Colour for ' + escapeHtml(phase.label) + '">' +
+        '<input type="text" class="pe-label" maxlength="40" value="' +
+          escapeHtml(phase.label) + '" placeholder="Name" aria-label="Phase name">' +
+        '<input type="number" class="pe-from" min="0" max="130" value="' + phase.from +
+          '" aria-label="Start age">' +
+        '<span class="pe-dash">–</span>' +
+        '<input type="number" class="pe-to" min="1" max="130" value="' + phase.to +
+          '" aria-label="End age">' +
+        '<button type="button" class="pe-remove" aria-label="Remove ' +
+          escapeHtml(phase.label) + '">&times;</button>' +
+        '</div>';
+    }).join('');
+
+    el.phaseEmpty.hidden = phases.length > 0;
+  }
+
+  /** Rebuild the phase list from whatever is currently in the inputs. */
+  function readPhaseEditor() {
+    return Array.prototype.map.call(
+      el.phaseRows.querySelectorAll('.phase-edit'),
+      function (row) {
+        return {
+          label: row.querySelector('.pe-label').value.trim(),
+          from: parseInt(row.querySelector('.pe-from').value, 10),
+          to: parseInt(row.querySelector('.pe-to').value, 10),
+          color: row.querySelector('.pe-color').value
+        };
+      }
+    );
+  }
+
+  function commitPhases(phases) {
+    LT.setSetting(state, 'phases', phases);
+    builtKey = null;              // the tint is baked into the row markup
+    commit();
+    renderPhaseEditor();
+  }
+
+  function initPhaseEditor() {
+    // Ranges are re-sorted on save, so commit on `change` (which fires at blur)
+    // rather than `input` — otherwise rows would reshuffle mid-keystroke.
+    el.phaseRows.addEventListener('change', function () {
+      commitPhases(readPhaseEditor());
+    });
+
+    el.phaseRows.addEventListener('click', function (e) {
+      var button = e.target.closest('.pe-remove');
+      if (!button) return;
+
+      var index = +button.parentNode.dataset.i;
+      var phases = readPhaseEditor();
+      phases.splice(index, 1);
+      commitPhases(phases);
+      say('Phase removed.');
+    });
+
+    el.btnAddPhase.addEventListener('click', function () {
+      var phases = readPhaseEditor();
+      var last = phases[phases.length - 1];
+      var from = last ? Math.min(last.to, 125) : 0;
+
+      phases.push({
+        label: 'New phase',
+        from: from,
+        to: Math.min(from + 5, 130),
+        color: PHASE_COLORS[phases.length % PHASE_COLORS.length]
+      });
+
+      commitPhases(phases);
+      var added = el.phaseRows.querySelector('.phase-edit:last-child .pe-label');
+      if (added) { added.focus(); added.select(); }
+    });
+
+    el.btnResetPhases.addEventListener('click', function () {
+      commitPhases(LT.DEFAULT_PHASES);
+      say('Phases reset to the defaults.');
+    });
+
+    renderPhaseEditor();
+  }
+
+  var PHASE_COLORS = ['#7c9ec9', '#5fae9b', '#c9a25f', '#c9805f',
+                      '#ab74a4', '#7385b5', '#7e9e6e', '#8e8e96'];
+
+  /* ------------------------------------------------------------------ *
    * Sync
    * ------------------------------------------------------------------ */
 
@@ -696,6 +917,7 @@
     el.palette.checked = state.palette === 'cbSafe';
     builtKey = null;
     render();
+    renderPhaseEditor();
     renderSync();
   }
 

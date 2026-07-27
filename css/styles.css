@@ -286,8 +286,13 @@ kbd {
   margin: 0.5rem auto 0;
 }
 
+/* The narrow views centre themselves, and the x-axis label has to travel with
+   them or it ends up floating off to the left of the grid it describes. */
+.chart-area--months { max-width: 400px; }
+.chart-area--years { max-width: 430px; }
+
 .axis-x {
-  margin: 0 0 0.4rem 2.2rem;
+  margin: 0 0 0.4rem 2.9rem;
   color: var(--accent);
   font-size: 0.75rem;
   font-weight: 600;
@@ -299,16 +304,17 @@ kbd {
   padding-bottom: 0.5rem;
 }
 
-.chart { --cols: 52; }
+.chart { --cols: 52; margin: 0 auto; }
 
 .row {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: stretch;
+  gap: 0.4rem;
 }
 
 .lbl {
   flex: 0 0 1.7rem;
+  align-self: center;
   color: var(--muted);
   font-size: 0.65rem;
   font-variant-numeric: tabular-nums;
@@ -316,17 +322,38 @@ kbd {
   user-select: none;
 }
 
+/* The phase bar in the gutter. Neighbouring rows in the same phase share a
+   colour and no rounding, so a run of years reads as one continuous bar. */
+.rail {
+  flex: 0 0 5px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.rail--first { border-radius: 3px 3px 0 0; }
+.rail--last { border-radius: 0 0 3px 3px; }
+.rail--first.rail--last { border-radius: 3px; }
+
+/* The years view packs a decade into each row, so a vertical bar cannot
+   represent it — the row tint carries the phase there instead. */
+.rail--muted { flex-basis: 0; }
+
 .cells {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(var(--cell-min), 1fr));
   gap: var(--gap);
+  padding: var(--gap) calc(var(--gap) / 2);
+  border-radius: 2px;
 }
 
-/* A cell with no class is a stretch of life you have not reached yet. */
+/* A cell with no class is a stretch of life you have not reached yet.
+   One shape across all four views — only the pixel size changes. */
 .chart i {
+  display: block;
   aspect-ratio: 1;
   border: 1px solid var(--future-line);
+  border-radius: 2px;
   background: var(--future);
 }
 
@@ -348,9 +375,31 @@ kbd {
   min-width: 1160px;
 }
 
-.chart--days i { border-radius: 1px; }
 .chart--days .cells { cursor: pointer; }
 .chart--days i:hover { outline: 1px solid var(--accent); }
+
+/* In the years view each cell sits inside a phase-coloured pad. Zero gap
+   between pads is what makes a run of years read as one continuous block. */
+.slot {
+  display: block;
+  padding: 3px;
+  border-radius: 3px;
+}
+
+.chart--years .cells { gap: 0; }
+.chart--years .slot + .slot { margin-left: 0; }
+
+/* Weeks — the classic view, 52 columns. */
+/* In the years view each cell sits inside a phase-coloured pad. Zero gap
+   between pads is what makes a run of years read as one continuous block. */
+.slot {
+  display: block;
+  padding: 3px;
+  border-radius: 3px;
+}
+
+.chart--years .cells { gap: 0; }
+.chart--years .slot + .slot { margin-left: 0; }
 
 /* Weeks — the classic view, 52 columns. */
 .chart--weeks {
@@ -358,28 +407,20 @@ kbd {
   --gap: 2px;
 }
 
-.chart--weeks i { border-radius: 1px; }
-
-/* Months — one row per year, twelve circles. */
+/* Months — one row per year, twelve to a row. Kept compact: at 90 rows,
+   every extra pixel of cell height is 90px of scrolling. */
 .chart--months {
   --cell-min: 10px;
   --gap: 3px;
-  max-width: 340px;
+  max-width: 330px;
 }
 
-.chart--months i { border-radius: 50%; }
-
-/* Years — diamonds, ten per row. The rotation overflows the grid cell, so the
-   gap has to be wide enough to absorb it. */
+/* Years — ten to a row, the chunkiest cells. */
 .chart--years {
   --cell-min: 12px;
-  --gap: 16px;
-  max-width: 340px;
-  margin-top: 0.75rem;
+  --gap: 4px;
+  max-width: 360px;
 }
-
-.chart--years .row { margin-bottom: 6px; }
-.chart--years i { transform: rotate(45deg); }
 
 /* ------------------------------------------------------------------ *
  * Legend, tooltip, status
@@ -409,6 +450,110 @@ kbd {
 .swatch--bad { background: var(--bad); border-color: transparent; }
 .swatch--tie { background: var(--tie); border-color: transparent; }
 .swatch--past { background: var(--past); border-color: transparent; }
+
+/* ------------------------------------------------------------------ *
+ * Phases
+ * ------------------------------------------------------------------ */
+
+.phase-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.4rem 0.9rem;
+  max-width: 780px;
+  margin: 0 auto 1.5rem;
+}
+
+.phase-legend[hidden] { display: none; }
+
+.phase-item {
+  display: grid;
+  grid-template-columns: 0.6rem auto 1fr;
+  align-items: baseline;
+  gap: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.phase-swatch {
+  grid-row: span 2;
+  align-self: start;
+  width: 0.6rem;
+  height: 1.6rem;
+  border-radius: 3px;
+}
+
+.phase-name { font-weight: 600; }
+.phase-range { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.phase-stat {
+  grid-column: 2 / -1;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+/* Editor */
+
+.phases {
+  margin: 1rem 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.phase-edit {
+  display: grid;
+  grid-template-columns: 2rem minmax(4rem, 1fr) 3.4rem 0.6rem 3.4rem 2rem;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.phase-edit input {
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.8rem;
+}
+
+.phase-edit input[type="color"] {
+  height: 1.9rem;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.phase-edit input[type="number"] {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pe-dash { color: var(--muted); text-align: center; }
+
+.pe-remove {
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pe-remove:hover { color: var(--bad); border-color: var(--bad); }
+
+.phases .field--actions { margin-top: 0.8rem; padding-top: 0.8rem; }
+
+.phases .field--actions button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 
 .tooltip {
   position: absolute;
@@ -623,13 +768,14 @@ kbd {
 
   .card, .views, .stats, .legend, .status, .rollup { break-inside: avoid; }
   .today, .settings, .status, .credits p:last-child { display: none; }
+  .phase-legend { break-inside: avoid; }
 
   .chart-scroll { overflow: visible; }
   .chart--days { min-width: 0; }
 
   /* Browsers strip backgrounds when printing by default, which would erase the
      entire chart. Force them on for the cells specifically. */
-  .chart i, .stat-value, .swatch {
+  .chart i, .stat-value, .swatch, .rail, .cells, .slot, .phase-swatch {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

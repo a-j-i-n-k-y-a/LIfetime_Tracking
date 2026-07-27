@@ -63,7 +63,7 @@
 <p class="rollup" id="rollup"></p>
 
 <!-- Chart ---------------------------------------------------------------- -->
-<main class="chart-area">
+<main class="chart-area" id="chartArea">
   <p class="axis-x" id="axisX"></p>
   <div class="chart-scroll">
     <div class="chart" id="chart" aria-hidden="true"></div>
@@ -78,6 +78,8 @@
   <span class="legend-item"><i class="swatch swatch--past"></i>Lived, not logged</span>
   <span class="legend-item"><i class="swatch swatch--future"></i>Ahead of you</span>
 </div>
+
+<div class="phase-legend" id="phaseLegend" aria-label="Phases of your life"></div>
 
 <!-- Settings ------------------------------------------------------------- -->
 <details class="card settings" id="settings">
@@ -97,6 +99,25 @@
     <input type="checkbox" id="palette">
     <label for="palette">Colour-blind friendly palette (blue / orange)</label>
   </div>
+
+  <!-- Phases ---------------------------------------------------------- -->
+  <section class="phases" aria-labelledby="phasesHeading">
+    <h3 class="sync-heading" id="phasesHeading">Phases of your life</h3>
+    <p class="hint">
+      Chapters marked as age ranges — they shade the gutter beside the chart in every
+      view, and the legend below it reports how each one went. Ranges run from the first
+      age up to but not including the last, so 20–23 covers ages 20, 21 and 22. Gaps are
+      fine, and overlaps go to the earlier phase.
+    </p>
+
+    <div id="phaseRows"></div>
+    <p class="hint" id="phaseEmpty" hidden>No phases — the chart will be untinted.</p>
+
+    <div class="field field--actions">
+      <button type="button" id="btnAddPhase">Add phase</button>
+      <button type="button" id="btnResetPhases">Reset to defaults</button>
+    </div>
+  </section>
 
   <!-- Sync ------------------------------------------------------------ -->
   <section class="sync" aria-labelledby="syncHeading">

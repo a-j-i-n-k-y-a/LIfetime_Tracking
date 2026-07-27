@@ -105,6 +105,27 @@ function blank(overrides = {}) {
      LT.mergeStates(configured, fresh).dob === '1998-03-15');
 }
 
+/* --- phases sync like any other setting ------------------------------ */
+{
+  const a = blank(), b = blank();
+  LT.setSetting(a, 'phases', [{ label: 'Uni', from: 18, to: 22, color: '#111111' }]);
+  LT.setSetting(b, 'phases', [{ label: 'Work', from: 22, to: 65, color: '#222222' }]);
+  b.meta.settings.phases = a.meta.settings.phases + 10;
+
+  ok('newer phase list wins', LT.mergeStates(a, b).phases[0].label === 'Work');
+  ok('newer phase list wins either way', LT.mergeStates(b, a).phases[0].label === 'Work');
+  ok('phase merge is order-independent',
+     same(LT.mergeStates(a, b), LT.mergeStates(b, a)));
+
+  // Clearing every phase must propagate, not fall back to the defaults.
+  const cleared = blank(), keeps = blank();
+  LT.setSetting(keeps, 'phases', [{ label: 'X', from: 0, to: 5, color: '#333333' }]);
+  LT.setSetting(cleared, 'phases', []);
+  cleared.meta.settings.phases = keeps.meta.settings.phases + 10;
+  ok('an empty phase list syncs as a real value',
+     LT.mergeStates(keeps, cleared).phases.length === 0);
+}
+
 /* --- migration must never delete ------------------------------------- */
 {
   // A v1 export has no meta at all. Merging it with a populated device must be
