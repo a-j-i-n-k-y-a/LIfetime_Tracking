@@ -9,7 +9,7 @@
 cd "$(dirname "$0")/.." || exit 1
 
 failed=0
-for suite in core merge sync ui; do
+for suite in core merge sync backfill ui; do
   printf '%-7s ' "$suite"
   if ! node "test/$suite.test.js" | tail -1; then
     failed=1

@@ -139,6 +139,41 @@ A key present in `meta.entries` but absent from `entries` is a **tombstone** —
 deliberately cleared. It has to be recorded, or a delete on one device would be quietly
 undone by another device that still remembered the day.
 
+## Backfilling years you never logged
+
+You remember a year as good, rough or somewhere in between. You do not remember the
+individual Tuesdays. `tools/backfill.js` invents plausible days underneath a verdict you do
+remember, so the early part of the chart fills in without you inventing thousands of moods
+by hand.
+
+```sh
+node tools/backfill.js --dob=1998-03-15 --out=backfill.json
+node tools/backfill.js --from=my-export.json      # reads the date of birth from an export
+```
+
+Then **Settings → Import JSON**. Imports merge, so anything you logged yourself wins and is
+never replaced by invented data.
+
+The spec is a list of age ranges:
+
+```sh
+--spec="0-14:tie,15-16:good,17:bad,18-19:good,20-21:bad"
+```
+
+`good`, `bad`, `tie` (a year that was genuinely neither) or `blank` (leave it empty).
+
+Days are generated **top-down** — the year verdict picks month verdicts, months pick weeks,
+weeks pick days — rather than rolling dice per day and hoping the average lands right. The
+result is then run back through the app's own `LT.aggregate` and checked against the spec, so
+the file cannot claim a year was good while the chart would draw it rough. If a year does not
+match, nothing is written.
+
+Only day entries are produced; weeks, months and years are derived exactly as they are for
+days you logged yourself. `--seed` makes it reproducible.
+
+This is invented data. It is a fair picture of a year you described, not a record of what
+happened — worth remembering before reading anything into a particular week.
+
 ## Syncing your laptop and your phone
 
 Optional, off by default. Turn it on in **Settings → Sync across devices** and both browsers
@@ -223,7 +258,8 @@ sw.js                   service worker (offline + installable)
 manifest.webmanifest    PWA metadata
 icons/                  generated PNG app icons
 tools/make_icons.py     regenerates those icons (stdlib only)
-test/                   255 assertions; see below
+tools/backfill.js       invents days under a remembered verdict
+test/                   280 assertions; see below
 ```
 
 `core.js` touches no DOM, and `sync.js` contains no conflict logic — that lives in
@@ -243,6 +279,7 @@ the chart honest if you ever log while travelling.
 |---|---:|---|
 | `core.test.js` | 92 | Local-calendar day counting, leap years, 29 Feb birthdays, week/month clamping at the end of a life-year, tie propagation, streaks across gaps, malformed input, phase ranges and per-phase stats |
 | `merge.test.js` | 35 | Tombstones, v1 migration, phase sync, and the CRDT laws over 400 randomised state pairs |
+| `backfill.test.js` | 25 | The generator across 5 dates of birth x 25 seeds, every generated life checked through the real aggregation; plus spec parsing and merge precedence |
 | `sync.test.js` | 38 | Two simulated devices against a fake Gist API: offline edits, conflicts, deletes, 304s, truncated gists, 401/403/404, corrupt remote data |
 | `ui.test.js` | 90 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline, uniform cell geometry, phase shading, the phase editor and appearance |
 
