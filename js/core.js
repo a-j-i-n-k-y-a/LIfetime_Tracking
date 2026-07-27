@@ -151,9 +151,9 @@
    * stretches that mean something to you, not to tile the whole lifespan.
    */
   // Drawn from the same five colours as the rest of the chart, walking from the
-  // cool end to the warm one so the run of a life reads in order. Pure maroon
-  // and pure midnight are deliberately absent: those two mean "rough day" and
-  // "good day", and a phase marker must never be mistaken for a cell.
+  // cool end to the warm one so the run of a life reads in order. The exact
+  // blue and red are deliberately absent: those two mean "good day" and
+  // "rough day", and a phase marker must never be mistaken for a cell.
   var DEFAULT_PHASES = [
     { label: 'Childhood',   from: 0,  to: 13, color: '#a7c4e0' },
     { label: 'Teenage',     from: 13, to: 20, color: '#6e96c2' },
