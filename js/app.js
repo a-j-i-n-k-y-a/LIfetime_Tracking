@@ -23,17 +23,17 @@
     weeks: {
       unit: 'Weeks',
       axis: 'Week of the year →',
-      rollup: 'Each square is one week — green when it held more good days than rough ones.'
+      rollup: 'Each square is one week — filled when it held more good days than rough ones.'
     },
     months: {
       unit: 'Months',
       axis: 'Month of the year →',
-      rollup: 'Each square is one month — green when more of its weeks were green than red.'
+      rollup: 'Each square is one month — it takes the verdict of most of its weeks.'
     },
     years: {
       unit: 'Years',
       axis: 'Ten years per row →',
-      rollup: 'Each square is one year — green when more of its months were green than red.'
+      rollup: 'Each square is one year — it takes the verdict of most of its months.'
     }
   };
 
@@ -671,7 +671,7 @@
     var parts = [];
     if (bucket.good) parts.push(bucket.good + ' good ' + plural(noun, bucket.good));
     if (bucket.bad) parts.push(bucket.bad + ' rough ' + plural(noun, bucket.bad));
-    var label = bucket.mark === LT.TIE ? 'even split' : bucket.mark === LT.GOOD ? 'green' : 'red';
+    var label = bucket.mark === LT.TIE ? 'even split' : bucket.mark === LT.GOOD ? 'good' : 'rough';
     return parts.join(', ') + ' → ' + label;
   }
 
@@ -857,8 +857,8 @@
     renderPhaseEditor();
   }
 
-  var PHASE_COLORS = ['#7c9ec9', '#5fae9b', '#c9a25f', '#c9805f',
-                      '#ab74a4', '#7385b5', '#7e9e6e', '#8e8e96'];
+  var PHASE_COLORS = ['#96c0ce', '#5f97a4', '#2b6470', '#d8ba98',
+                      '#bf9264', '#a8604a', '#8d4038', '#8a8279'];
 
   /* ------------------------------------------------------------------ *
    * Sync

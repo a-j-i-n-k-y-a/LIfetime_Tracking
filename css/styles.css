@@ -18,19 +18,19 @@
  * ------------------------------------------------------------------ */
 
 :root {
-  --bg: #f2efe6;              /* warm sheet */
-  --surface: rgba(255, 253, 247, 0.55);
-  --border: rgba(24, 22, 16, 0.16);
-  --text: #191710;
-  --muted: #6f6a5d;
-  --accent: #191710;          /* ink; the poster has no second colour */
+  --bg: #efe8df;              /* alabaster — the sheet */
+  --surface: rgba(255, 253, 250, 0.5);
+  --border: rgba(15, 65, 74, 0.18);
+  --text: #0f414a;            /* midnight blue, used as the ink */
+  --muted: #4f676d;
+  --accent: #0f414a;
 
-  --good: #2f7a4d;
-  --bad: #c0322b;
-  --tie: #a9a294;
-  --past: #cac3b1;            /* lived, nothing recorded */
+  --good: #0f414a;            /* midnight blue: the poster's solid cells */
+  --bad: #7f0303;             /* maroon */
+  --tie: #96c0ce;             /* light blue — a genuine middle, not a grey */
+  --past: #d8ba98;            /* tan: lived, nothing recorded */
   --future: transparent;      /* unlived cells are an outline only */
-  --future-line: rgba(24, 22, 16, 0.3);
+  --future-line: rgba(15, 65, 74, 0.32);
 
   --grain: 0.5;
   --fibre: 0.1;
@@ -40,10 +40,13 @@
   --gap: 0.25rem;
 }
 
+/* Midnight blue against maroon already survives red-green colour blindness,
+   since it differs in hue *and* lightness. This swaps the red for an amber, so
+   the pair also separates for anyone who struggles with blue. */
 body[data-palette="cbSafe"] {
-  --good: #1f4f9e;
-  --bad: #cc6a12;
-  --tie: #a9a294;
+  --good: #0f414a;
+  --bad: #b35c00;
+  --tie: #96c0ce;
 }
 
 /* Toned paper rather than a slab of black, so the texture still reads.
@@ -57,51 +60,51 @@ body[data-palette="cbSafe"] {
  * The default is neither: it is paper, whatever the OS prefers.
  */
 :root[data-theme="dark"] {
-  --bg: #14130f;
-  --surface: rgba(255, 250, 235, 0.04);
-  --border: rgba(238, 233, 219, 0.16);
-  --text: #ece7d9;
-  --muted: #948d7d;
-  --accent: #ece7d9;
+  --bg: #0b323a;
+  --surface: rgba(239, 232, 223, 0.05);
+  --border: rgba(239, 232, 223, 0.18);
+  --text: #efe8df;
+  --muted: #97b3ba;
+  --accent: #efe8df;
 
-  --good: #4f9e69;
-  --bad: #d4544c;
-  --tie: #6e695e;
-  --past: #34312a;
-  --future-line: rgba(238, 233, 219, 0.2);
+  --good: #96c0ce;            /* light blue reads as the positive on dark */
+  --bad: #c2413a;             /* maroon lifted enough to stay legible */
+  --tie: #6d8d95;
+  --past: #16454e;
+  --future-line: rgba(239, 232, 223, 0.24);
 
-  --grain: 0.32;
-  --fibre: 0.1;
+  --grain: 0.3;
+  --fibre: 0.09;
   --grain-blend: overlay;
 }
 
 :root[data-theme="dark"] body[data-palette="cbSafe"] {
-  --good: #6f9fe0;
-  --bad: #e0904a;
+  --good: #96c0ce;
+  --bad: #e0794a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
-    --bg: #14130f;
-    --surface: rgba(255, 250, 235, 0.04);
-    --border: rgba(238, 233, 219, 0.16);
-    --text: #ece7d9;
-    --muted: #948d7d;
-    --accent: #ece7d9;
+    --bg: #0b323a;
+    --surface: rgba(239, 232, 223, 0.05);
+    --border: rgba(239, 232, 223, 0.18);
+    --text: #efe8df;
+    --muted: #97b3ba;
+    --accent: #efe8df;
 
-    --good: #4f9e69;
-    --bad: #d4544c;
-    --tie: #6e695e;
-    --past: #34312a;
-    --future-line: rgba(238, 233, 219, 0.2);
+    --good: #96c0ce;            /* light blue reads as the positive on dark */
+    --bad: #c2413a;             /* maroon lifted enough to stay legible */
+    --tie: #6d8d95;
+    --past: #16454e;
+    --future-line: rgba(239, 232, 223, 0.24);
 
-    --grain: 0.32;
-    --fibre: 0.1;
+    --grain: 0.3;
+    --fibre: 0.09;
     --grain-blend: overlay;
   }
   body[data-palette="cbSafe"] {
-    --good: #6f9fe0;
-    --bad: #e0904a;
+    --good: #96c0ce;
+    --bad: #e0794a;
   }
 }
 
@@ -381,7 +384,7 @@ kbd {
 
 /* The narrow views centre themselves, and the x-axis label has to travel with
    them or it ends up floating off to the left of the grid it describes. */
-.chart-area--months { max-width: 540px; }
+.chart-area--months { max-width: 680px; }
 .chart-area--years { max-width: 680px; }
 
 .axis-x {
@@ -509,15 +512,15 @@ kbd {
   --gap: 3px;
 }
 
-/* Months — twelve to a row.
-   Cells are square, so width buys height: this view has 90 rows, and every
-   extra pixel of cell size costs ~90px of scrolling. Hence wide enough to sit
-   comfortably beside the weeks view, but not the full 780px, which would make
-   the chart roughly twice as tall as it is now for no extra legibility. */
+/* Months — twelve to a row, matched to the years view so the chart does not
+   visibly jump when you switch between them.
+   Cells are square, so width buys height and this view has 90 rows: it is by
+   far the tallest of the four. That is the cost of matching the others, and
+   the lived part sits at the top where you land anyway. */
 .chart--months {
   --cell-min: 10px;
   --gap: 6px;
-  max-width: 540px;
+  max-width: 680px;
 }
 
 /* Years — ten to a row. Only nine rows exist, so width is nearly free here and

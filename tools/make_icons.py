@@ -3,10 +3,10 @@ import struct
 import zlib
 import os
 
-BG = (15, 17, 21)
-GOOD = (34, 197, 94)
-BAD = (240, 71, 71)
-PAST = (55, 62, 75)
+BG = (15, 65, 74)        # midnight blue
+GOOD = (150, 192, 206)   # light blue reads as 'good' on dark
+BAD = (194, 65, 58)      # lifted maroon
+PAST = (22, 69, 78)      # lived, unlogged
 
 # 6x6 lattice of a life: mostly logged, a few rough days, a tail not yet lived.
 PATTERN = [

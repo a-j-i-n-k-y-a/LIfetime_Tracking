@@ -217,7 +217,7 @@ eq('cleanPhases rejects non-array', LT.cleanPhases('nope'), null);
 eq('cleanPhases caps at 20', LT.cleanPhases(
   Array.from({ length: 40 }, (_, i) => ({ label: 'p' + i, from: i, to: i + 1 }))).length, 20);
 eq('cleanPhases defaults a bad colour',
-   LT.cleanPhases([{ label: 'x', from: 0, to: 9, color: 'octarine' }])[0].color, '#8e8e96');
+   LT.cleanPhases([{ label: 'x', from: 0, to: 9, color: 'octarine' }])[0].color, '#8a8279');
 eq('cleanPhases keeps a good colour',
    LT.cleanPhases([{ label: 'x', from: 0, to: 9, color: '#Ab12Cd' }])[0].color, '#Ab12Cd');
 eq('cleanPhases truncates a long label',

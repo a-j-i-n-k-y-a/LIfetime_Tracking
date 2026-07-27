@@ -150,15 +150,19 @@
    * Gaps are allowed and simply render untinted — the point is to mark the
    * stretches that mean something to you, not to tile the whole lifespan.
    */
+  // Drawn from the same five colours as the rest of the chart, walking from the
+  // cool end to the warm one so the run of a life reads in order. Pure maroon
+  // and pure midnight are deliberately absent: those two mean "rough day" and
+  // "good day", and a phase marker must never be mistaken for a cell.
   var DEFAULT_PHASES = [
-    { label: 'Childhood',   from: 0,  to: 13, color: '#7c9ec9' },
-    { label: 'Teenage',     from: 13, to: 20, color: '#5fae9b' },
-    { label: 'College',     from: 20, to: 23, color: '#c9a25f' },
-    { label: 'Twenties',    from: 23, to: 30, color: '#c9805f' },
-    { label: 'Thirties',    from: 30, to: 40, color: '#ab74a4' },
-    { label: 'Forties',     from: 40, to: 50, color: '#7385b5' },
-    { label: 'Fifties',     from: 50, to: 60, color: '#7e9e6e' },
-    { label: 'Later years', from: 60, to: 90, color: '#8e8e96' }
+    { label: 'Childhood',   from: 0,  to: 13, color: '#96c0ce' },
+    { label: 'Teenage',     from: 13, to: 20, color: '#5f97a4' },
+    { label: 'College',     from: 20, to: 23, color: '#2b6470' },
+    { label: 'Twenties',    from: 23, to: 30, color: '#d8ba98' },
+    { label: 'Thirties',    from: 30, to: 40, color: '#bf9264' },
+    { label: 'Forties',     from: 40, to: 50, color: '#a8604a' },
+    { label: 'Fifties',     from: 50, to: 60, color: '#8d4038' },
+    { label: 'Later years', from: 60, to: 90, color: '#8a8279' }
   ];
 
   /**
@@ -203,7 +207,7 @@
       label: String(raw.label == null ? '' : raw.label).slice(0, 40),
       from: from,
       to: to,
-      color: HEX_RE.test(raw.color) ? raw.color : '#8e8e96'
+      color: HEX_RE.test(raw.color) ? raw.color : '#8a8279'
     };
   }
 

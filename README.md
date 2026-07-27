@@ -1,8 +1,8 @@
 # Your Life in Colour
 
-A life-in-weeks chart you actually fill in. Mark each day green (good) or red (rough),
-and the colour propagates upward: days decide weeks, weeks decide months, months decide
-years. Over time the grid becomes a picture of how your life has actually gone.
+A life-in-weeks chart you actually fill in. Mark each day good or rough, and the colour
+propagates upward: days decide weeks, weeks decide months, months decide years. Over time
+the grid becomes a picture of how your life has actually gone.
 
 Adapted from [Your Life in Weeks](https://waitbutwhy.com/2014/05/life-weeks.html) by Tim
 Urban and Bryan Braun's [interactive version](https://github.com/bryanbraun/your-life),
@@ -16,29 +16,29 @@ which draws the grid but doesn't let you record anything in it.
    URL (`#months`), so you can bookmark the one you like.
 
 Missed a few days? Change the date in the Today card and log backwards, or click any past
-square in the Days view to cycle it green → red → blank.
+square in the Days view to cycle it good → rough → blank.
 
 Every view draws the same square cell, only at a different size — a week and a year look
 alike so the colour is the only thing that changes between them.
 
 ## How the roll-up works
 
-One rule, applied at every level: **more green than red wins.**
+One rule, applied at every level: **the majority wins.**
 
-| Level  | Counts | Green when |
+| Level  | Counts | Good when |
 |--------|--------|-----------|
 | Day    | you    | you marked it good |
 | Week   | its days | more good days than rough |
-| Month  | its weeks | more green weeks than red |
-| Year   | its months | more green months than red |
+| Month  | its weeks | more good weeks than rough |
+| Year   | its months | more good months than rough |
 
 Two things follow from counting *verdicts* rather than raw days:
 
-- A month is decided by its weeks, not its days. Three green weeks with one logged day
-  each beat one red week with twenty — the month is green. This is what you asked for, and
-  it means a single terrible stretch can't drag down a month that was otherwise fine.
-- An exact split is a **tie** (grey), and a tie doesn't vote in the level above it. Neither
-  does a period with nothing logged. Blank stays blank all the way up.
+- A month is decided by its weeks, not its days. Three good weeks with one logged day each
+  beat one rough week with twenty — the month is good. This is what you asked for, and it
+  means a single terrible stretch can't drag down a month that was otherwise fine.
+- An exact split is a **tie** (light blue), and a tie doesn't vote in the level above it.
+  Neither does a period with nothing logged. Blank stays blank all the way up.
 
 ### The calendar approximations
 
@@ -86,6 +86,23 @@ not lived yet are an outline only; logged ones are solid. The paper grain is two
 noise fields — fine tooth over long fibres — so it costs nothing to download and works
 offline like the rest of the app.
 
+Five colours do all the work:
+
+| | | |
+|---|---|---|
+| Alabaster | `#efe8df` | the sheet |
+| Midnight blue | `#0f414a` | the ink — headings, rules, and a **good** day |
+| Maroon | `#7f0303` | a **rough** day |
+| Light blue | `#96c0ce` | an **even split** |
+| Tan | `#d8ba98` | **lived, nothing recorded** |
+
+Phase markers are drawn from the same family but never use pure midnight or pure maroon —
+those two mean good and rough, and a phase marker must not be mistaken for a cell. Dark mode
+turns the palette inside out: midnight becomes the paper and light blue becomes the ink.
+
+Because phases are stored with your data, changing the defaults doesn't recolour phases you
+already have. **Settings → Reset to defaults** picks up the new set.
+
 **Paper is the default whatever your device is set to.** A phone in dark mode would
 otherwise never show the thing, so the OS preference is not followed unless you ask for it:
 *Settings → Appearance* offers **Paper**, **Dark** (toned paper, not a slab of black) and
@@ -115,8 +132,8 @@ account and no server. This repo is public; your log is not.
 }
 ```
 
-Marks are stored as `good` / `bad` rather than `green` / `red`, so switching to the
-colour-blind palette (blue/orange, in Settings) doesn't touch your data.
+Marks are stored as `good` / `bad` rather than as colours, so restyling the chart — or
+switching to the colour-blind palette in Settings — never touches your data.
 
 A key present in `meta.entries` but absent from `entries` is a **tombstone** — a day you
 deliberately cleared. It has to be recorded, or a delete on one device would be quietly
