@@ -79,6 +79,20 @@ phases do overlap, the earlier-starting one owns the shared years.
 Phases sync between devices like any other setting, and clearing them all is respected
 rather than silently reset to the defaults.
 
+## The look
+
+Printed poster rather than dashboard: pressed paper, ink, hairline rules. Cells you have
+not lived yet are an outline only; logged ones are solid. The paper grain is two inline SVG
+noise fields — fine tooth over long fibres — so it costs nothing to download and works
+offline like the rest of the app.
+
+**Paper is the default whatever your device is set to.** A phone in dark mode would
+otherwise never show the thing, so the OS preference is not followed unless you ask for it:
+*Settings → Appearance* offers **Paper**, **Dark** (toned paper, not a slab of black) and
+**Match my device**. The choice syncs across devices with everything else.
+
+The grain is suppressed when printing — it would only waste toner.
+
 ## Your data
 
 Everything lives in this browser's `localStorage` under `lifetime-tracking-v1`. There is no
@@ -90,6 +104,7 @@ account and no server. This repo is public; your log is not.
   "dob": "1998-03-15",
   "lifespan": 90,
   "palette": "classic",
+  "theme": "paper",
   "phases": [ { "label": "Twenties", "from": 23, "to": 30, "color": "#c9805f" } ],
   "entries": { "2026-07-27": "good", "2026-07-26": "bad" },
   "meta": {
@@ -191,7 +206,7 @@ sw.js                   service worker (offline + installable)
 manifest.webmanifest    PWA metadata
 icons/                  generated PNG app icons
 tools/make_icons.py     regenerates those icons (stdlib only)
-test/                   248 assertions; see below
+test/                   255 assertions; see below
 ```
 
 `core.js` touches no DOM, and `sync.js` contains no conflict logic — that lives in
@@ -212,7 +227,7 @@ the chart honest if you ever log while travelling.
 | `core.test.js` | 92 | Local-calendar day counting, leap years, 29 Feb birthdays, week/month clamping at the end of a life-year, tie propagation, streaks across gaps, malformed input, phase ranges and per-phase stats |
 | `merge.test.js` | 35 | Tombstones, v1 migration, phase sync, and the CRDT laws over 400 randomised state pairs |
 | `sync.test.js` | 38 | Two simulated devices against a fake Gist API: offline edits, conflicts, deletes, 304s, truncated gists, 401/403/404, corrupt remote data |
-| `ui.test.js` | 83 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline, uniform cell geometry, phase shading and the phase editor |
+| `ui.test.js` | 90 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline, uniform cell geometry, phase shading, the phase editor and appearance |
 
 `ui.test.js` needs jsdom and skips cleanly without it; nothing else has dependencies:
 
