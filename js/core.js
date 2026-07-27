@@ -1,0 +1,372 @@
+/**
+ * Lifetime Tracking — core date math, storage, and aggregation.
+ *
+ * No dependencies, no build step. Everything hangs off window.LT so the file
+ * works when loaded as a classic script (including from file://).
+ *
+ * Marks are stored semantically as 'good' / 'bad' rather than 'green' / 'red',
+ * so the palette can be swapped (e.g. for colour-blind users) without touching
+ * the data.
+ */
+(function (global) {
+  'use strict';
+
+  var STORAGE_KEY = 'lifetime-tracking-v1';
+
+  var MS_PER_DAY = 86400000;
+  var WEEKS_PER_YEAR = 52;
+  var MONTHS_PER_YEAR = 12;
+
+  // The chart shows 52 weeks per year even though a year is ~52.143 weeks, and
+  // 12 months even though month lengths vary. Both are approximations that keep
+  // "row index === your age" true, which is the property that makes the chart
+  // readable. See README for the full explanation of the trade-off.
+  var AVG_DAYS_PER_MONTH = 30.4375;
+
+  var GOOD = 'good';
+  var BAD = 'bad';
+  var TIE = 'tie';
+
+  /* ------------------------------------------------------------------ *
+   * Date helpers
+   * ------------------------------------------------------------------ */
+
+  /** Local-calendar date key, e.g. '2026-07-27'. */
+  function toKey(date) {
+    var m = date.getMonth() + 1;
+    var d = date.getDate();
+    return date.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+  }
+
+  /** Parse 'YYYY-MM-DD' into a Date at local midnight. */
+  function fromKey(key) {
+    var parts = String(key).split('-');
+    return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  }
+
+  function today() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  /**
+   * Whole calendar days from `a` to `b`. Normalising through Date.UTC makes this
+   * immune to DST transitions, which would otherwise produce 23h/25h days and
+   * throw off a naive millisecond division.
+   */
+  function dayDiff(a, b) {
+    var ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    var ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.round((ub - ua) / MS_PER_DAY);
+  }
+
+  function addDays(date, n) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
+  }
+
+  /**
+   * The date you turn `age`. For a 29 February birthday this lands on 1 March in
+   * non-leap years (the Date constructor rolls over), which is a consistent and
+   * conventional choice.
+   */
+  function anniversary(dob, age) {
+    return new Date(dob.getFullYear() + age, dob.getMonth(), dob.getDate());
+  }
+
+  /** 365 or 366, depending on whether the life-year spans a leap day. */
+  function daysInLifeYear(dob, age) {
+    return dayDiff(anniversary(dob, age), anniversary(dob, age + 1));
+  }
+
+  /**
+   * Where a date sits in a life, relative to birthdays rather than the calendar.
+   * Returns null for dates before birth.
+   */
+  function lifePosition(dob, date) {
+    if (dayDiff(dob, date) < 0) return null;
+
+    var age = date.getFullYear() - dob.getFullYear();
+    if (dayDiff(anniversary(dob, age), date) < 0) age -= 1;
+
+    var dayOfYear = dayDiff(anniversary(dob, age), date);
+
+    return {
+      age: age,
+      dayOfYear: dayOfYear,
+      // 52 weeks cover 364 days, so the tail of the year (days 364-365) is
+      // folded into the final week. That week is 8-9 days long.
+      week: Math.min(WEEKS_PER_YEAR - 1, Math.floor(dayOfYear / 7)),
+      month: Math.min(MONTHS_PER_YEAR - 1, Math.floor(dayOfYear / AVG_DAYS_PER_MONTH))
+    };
+  }
+
+  /**
+   * Which month-of-life a given week-of-life rolls up into. Weeks don't divide
+   * evenly into months (52/12 = 4.33), so a week is assigned to the month
+   * containing its midpoint day. Every month ends up owning 4 or 5 weeks.
+   */
+  function monthOfWeek(week) {
+    return Math.min(MONTHS_PER_YEAR - 1, Math.floor((week * 7 + 3) / AVG_DAYS_PER_MONTH));
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Verdicts
+   * ------------------------------------------------------------------ */
+
+  /**
+   * The single rule the whole app runs on: more good than bad wins, an exact
+   * split is a tie, and no data at all stays blank. Periods with nothing logged
+   * never count towards the parent period.
+   */
+  function verdict(good, bad) {
+    if (good === 0 && bad === 0) return null;
+    if (good > bad) return GOOD;
+    if (bad > good) return BAD;
+    return TIE;
+  }
+
+  function emptyTally() {
+    return { good: 0, bad: 0, mark: null };
+  }
+
+  function tallyMark(bucket, mark) {
+    if (mark === GOOD) bucket.good += 1;
+    else if (mark === BAD) bucket.bad += 1;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Store
+   * ------------------------------------------------------------------ */
+
+  var DEFAULTS = {
+    version: 1,
+    dob: null,
+    lifespan: 90,
+    palette: 'classic',
+    entries: {}
+  };
+
+  function defaultState() {
+    return JSON.parse(JSON.stringify(DEFAULTS));
+  }
+
+  function sanitize(raw) {
+    var state = defaultState();
+    if (!raw || typeof raw !== 'object') return state;
+
+    if (typeof raw.dob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.dob)) {
+      state.dob = raw.dob;
+    }
+    if (typeof raw.lifespan === 'number' && raw.lifespan >= 1 && raw.lifespan <= 130) {
+      state.lifespan = Math.floor(raw.lifespan);
+    }
+    if (raw.palette === 'classic' || raw.palette === 'cbSafe') {
+      state.palette = raw.palette;
+    }
+    if (raw.entries && typeof raw.entries === 'object') {
+      Object.keys(raw.entries).forEach(function (key) {
+        var mark = raw.entries[key];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(key) && (mark === GOOD || mark === BAD)) {
+          state.entries[key] = mark;
+        }
+      });
+    }
+    return state;
+  }
+
+  function load() {
+    try {
+      return sanitize(JSON.parse(global.localStorage.getItem(STORAGE_KEY)));
+    } catch (err) {
+      // Private browsing, disabled storage, or corrupt JSON — start clean
+      // rather than leaving the app unusable.
+      return defaultState();
+    }
+  }
+
+  function save(state) {
+    try {
+      global.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Aggregation
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Roll the sparse day log up through the hierarchy the user asked for:
+   *
+   *   days  -> weeks   (a week is the majority of its logged days)
+   *   weeks -> months  (a month is the majority of its constituent weeks)
+   *   months -> years  (a year is the majority of its constituent months)
+   *
+   * Note that each level counts *verdicts* from the level below, not raw days.
+   * A month with four green weeks and one red week is green regardless of how
+   * many individual days sat inside those weeks.
+   */
+  function aggregate(state) {
+    var lifespan = state.lifespan;
+    var weeks = [];
+    var months = [];
+    var years = [];
+    var age;
+    var i;
+
+    for (age = 0; age < lifespan; age++) {
+      var weekRow = new Array(WEEKS_PER_YEAR);
+      for (i = 0; i < WEEKS_PER_YEAR; i++) weekRow[i] = emptyTally();
+      weeks.push(weekRow);
+
+      var monthRow = new Array(MONTHS_PER_YEAR);
+      for (i = 0; i < MONTHS_PER_YEAR; i++) monthRow[i] = emptyTally();
+      months.push(monthRow);
+
+      years.push(emptyTally());
+    }
+
+    if (!state.dob) {
+      return { weeks: weeks, months: months, years: years, lifespan: lifespan };
+    }
+
+    var dob = fromKey(state.dob);
+
+    // Days -> weeks. Iterating the sparse entry map (not every day of a life)
+    // keeps this proportional to how much you've actually logged.
+    Object.keys(state.entries).forEach(function (key) {
+      var pos = lifePosition(dob, fromKey(key));
+      if (!pos || pos.age < 0 || pos.age >= lifespan) return;
+      tallyMark(weeks[pos.age][pos.week], state.entries[key]);
+    });
+
+    for (age = 0; age < lifespan; age++) {
+      // Weeks -> months.
+      for (i = 0; i < WEEKS_PER_YEAR; i++) {
+        var week = weeks[age][i];
+        week.mark = verdict(week.good, week.bad);
+        if (week.mark) tallyMark(months[age][monthOfWeek(i)], week.mark);
+      }
+
+      // Months -> years.
+      for (i = 0; i < MONTHS_PER_YEAR; i++) {
+        var month = months[age][i];
+        month.mark = verdict(month.good, month.bad);
+        if (month.mark) tallyMark(years[age], month.mark);
+      }
+
+      years[age].mark = verdict(years[age].good, years[age].bad);
+    }
+
+    return { weeks: weeks, months: months, years: years, lifespan: lifespan };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Stats
+   * ------------------------------------------------------------------ */
+
+  /** Consecutive same-mark days ending today (or yesterday, if today is blank). */
+  function currentStreak(entries) {
+    var cursor = today();
+    var mark = entries[toKey(cursor)];
+
+    if (!mark) {
+      cursor = addDays(cursor, -1);
+      mark = entries[toKey(cursor)];
+      if (!mark) return { mark: null, length: 0 };
+    }
+
+    var length = 0;
+    while (entries[toKey(cursor)] === mark) {
+      length += 1;
+      cursor = addDays(cursor, -1);
+    }
+    return { mark: mark, length: length };
+  }
+
+  /** Longest run of each mark across the whole log. */
+  function longestStreaks(entries) {
+    var keys = Object.keys(entries).sort();
+    var best = { good: 0, bad: 0 };
+    var run = 0;
+    var runMark = null;
+    var prev = null;
+
+    keys.forEach(function (key) {
+      var date = fromKey(key);
+      var mark = entries[key];
+      var contiguous = prev !== null && dayDiff(prev, date) === 1;
+
+      if (contiguous && mark === runMark) {
+        run += 1;
+      } else {
+        run = 1;
+        runMark = mark;
+      }
+
+      if (run > best[mark]) best[mark] = run;
+      prev = date;
+    });
+
+    return best;
+  }
+
+  function stats(state) {
+    var entries = state.entries;
+    var keys = Object.keys(entries);
+    var good = 0;
+    var bad = 0;
+
+    keys.forEach(function (key) {
+      if (entries[key] === GOOD) good += 1;
+      else bad += 1;
+    });
+
+    var longest = longestStreaks(entries);
+
+    return {
+      logged: keys.length,
+      good: good,
+      bad: bad,
+      goodPercent: keys.length ? Math.round((good / keys.length) * 100) : 0,
+      current: currentStreak(entries),
+      longestGood: longest.good,
+      longestBad: longest.bad,
+      firstEntry: keys.length ? keys.sort()[0] : null
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Exports
+   * ------------------------------------------------------------------ */
+
+  global.LT = {
+    STORAGE_KEY: STORAGE_KEY,
+    WEEKS_PER_YEAR: WEEKS_PER_YEAR,
+    MONTHS_PER_YEAR: MONTHS_PER_YEAR,
+    GOOD: GOOD,
+    BAD: BAD,
+    TIE: TIE,
+
+    toKey: toKey,
+    fromKey: fromKey,
+    today: today,
+    dayDiff: dayDiff,
+    addDays: addDays,
+    anniversary: anniversary,
+    daysInLifeYear: daysInLifeYear,
+    lifePosition: lifePosition,
+    monthOfWeek: monthOfWeek,
+
+    verdict: verdict,
+    aggregate: aggregate,
+    stats: stats,
+
+    defaultState: defaultState,
+    sanitize: sanitize,
+    load: load,
+    save: save
+  };
+})(window);

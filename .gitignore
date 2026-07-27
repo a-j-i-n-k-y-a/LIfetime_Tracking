@@ -1,0 +1,11 @@
+# Capacitor / Android wrapper (see DEPLOYMENT.md option 4)
+node_modules/
+www/
+android/
+*.apk
+*.aab
+*.keystore
+
+# OS noise
+.DS_Store
+Thumbs.db

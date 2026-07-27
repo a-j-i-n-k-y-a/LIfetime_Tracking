@@ -1,0 +1,544 @@
+/**
+ * Lifetime Tracking — styles.
+ *
+ * Cell colour is driven entirely by custom properties so the palette can be
+ * swapped (classic green/red, or a blue/orange set that survives the most
+ * common forms of colour blindness) without touching markup or data.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Tokens
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --border: #e2e5ea;
+  --text: #16181d;
+  --muted: #6b7280;
+  --accent: #1e3a8a;
+
+  --good: #16a34a;
+  --bad: #dc2626;
+  --tie: #a1a1aa;
+  --past: #ced5de;
+  --future: transparent;
+  --future-line: #e8ebef;
+
+  --radius: 10px;
+  --gap: 0.25rem;
+}
+
+body[data-palette="cbSafe"] {
+  --good: #1d4ed8;
+  --bad: #ea7317;
+  --tie: #9ca3af;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --border: #262b35;
+    --text: #e8eaed;
+    --muted: #9aa2b1;
+    --accent: #93b4ff;
+
+    --good: #22c55e;
+    --bad: #f04747;
+    --tie: #71717a;
+    --past: #333a47;
+    --future-line: #232833;
+  }
+  body[data-palette="cbSafe"] {
+    --good: #60a5fa;
+    --bad: #fb923c;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 1rem 1rem 3rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+button, input { font: inherit; color: inherit; }
+
+/* ------------------------------------------------------------------ *
+ * Masthead
+ * ------------------------------------------------------------------ */
+
+.masthead {
+  max-width: 780px;
+  margin: 0 auto 1.25rem;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.5rem, 6vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.title-unit { color: var(--accent); }
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Cards
+ * ------------------------------------------------------------------ */
+
+.card {
+  max-width: 780px;
+  margin: 0 auto 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.card-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.hint--keys { margin-top: 0.2rem; }
+
+kbd {
+  padding: 0.05em 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+/* ------------------------------------------------------------------ *
+ * Today
+ * ------------------------------------------------------------------ */
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice {
+  flex: 1 1 8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.15s ease;
+}
+
+.choice:active { transform: scale(0.98); }
+
+.choice-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+}
+
+.choice--good .choice-dot { background: var(--good); }
+.choice--bad .choice-dot { background: var(--bad); }
+
+.choice--good[aria-pressed="true"] {
+  border-color: var(--good);
+  box-shadow: inset 0 0 0 2px var(--good);
+}
+
+.choice--bad[aria-pressed="true"] {
+  border-color: var(--bad);
+  box-shadow: inset 0 0 0 2px var(--bad);
+}
+
+.choice--clear { flex: 0 1 6rem; font-weight: 500; color: var(--muted); }
+.choice:disabled { opacity: 0.4; cursor: default; }
+
+.backfill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+}
+
+.backfill input {
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.8rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Stats
+ * ------------------------------------------------------------------ */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-width: 780px;
+  margin: 0 auto 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .stats { grid-template-columns: repeat(6, 1fr); }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value--good { color: var(--good); }
+.stat-value--bad { color: var(--bad); }
+
+.stat-label {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ *
+ * View filter
+ * ------------------------------------------------------------------ */
+
+.views {
+  display: flex;
+  gap: 0.25rem;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.view {
+  flex: 1;
+  min-height: 2.5rem;
+  padding: 0.4rem;
+  border: 0;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view[aria-pressed="true"] {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+.rollup {
+  max-width: 780px;
+  margin: 0.75rem auto 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ *
+ * Chart
+ * ------------------------------------------------------------------ */
+
+.chart-area {
+  max-width: 780px;
+  margin: 0.5rem auto 0;
+}
+
+.axis-x {
+  margin: 0 0 0.4rem 2.2rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.chart-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.5rem;
+}
+
+.chart { --cols: 52; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lbl {
+  flex: 0 0 1.7rem;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+}
+
+.cells {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(var(--cell-min), 1fr));
+  gap: var(--gap);
+}
+
+/* A cell with no class is a stretch of life you have not reached yet. */
+.chart i {
+  aspect-ratio: 1;
+  border: 1px solid var(--future-line);
+  background: var(--future);
+}
+
+.chart i.p { background: var(--past); border-color: transparent; }
+.chart i.g { background: var(--good); border-color: transparent; }
+.chart i.b { background: var(--bad); border-color: transparent; }
+.chart i.t { background: var(--tie); border-color: transparent; }
+
+.chart i.now {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+/* Days — 366 columns, always wider than a phone, so it scrolls. */
+.chart--days {
+  --cell-min: 3px;
+  --gap: 1px;
+  min-width: 1160px;
+}
+
+.chart--days i { border-radius: 1px; }
+.chart--days .cells { cursor: pointer; }
+.chart--days i:hover { outline: 1px solid var(--accent); }
+
+/* Weeks — the classic view, 52 columns. */
+.chart--weeks {
+  --cell-min: 5px;
+  --gap: 2px;
+}
+
+.chart--weeks i { border-radius: 1px; }
+
+/* Months — one row per year, twelve circles. */
+.chart--months {
+  --cell-min: 10px;
+  --gap: 3px;
+  max-width: 340px;
+}
+
+.chart--months i { border-radius: 50%; }
+
+/* Years — diamonds, ten per row. The rotation overflows the grid cell, so the
+   gap has to be wide enough to absorb it. */
+.chart--years {
+  --cell-min: 12px;
+  --gap: 16px;
+  max-width: 340px;
+  margin-top: 0.75rem;
+}
+
+.chart--years .row { margin-bottom: 6px; }
+.chart--years i { transform: rotate(45deg); }
+
+/* ------------------------------------------------------------------ *
+ * Legend, tooltip, status
+ * ------------------------------------------------------------------ */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 1rem;
+  max-width: 780px;
+  margin: 1rem auto 1.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--future-line);
+  border-radius: 2px;
+}
+
+.swatch--good { background: var(--good); border-color: transparent; }
+.swatch--bad { background: var(--bad); border-color: transparent; }
+.swatch--tie { background: var(--tie); border-color: transparent; }
+.swatch--past { background: var(--past); border-color: transparent; }
+
+.tooltip {
+  position: absolute;
+  z-index: 10;
+  max-width: 18rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  background: #16181d;
+  color: #f5f6f7;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+}
+
+.tooltip[hidden] { display: none; }
+
+.status {
+  max-width: 780px;
+  margin: 0 auto;
+  min-height: 1.2em;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.empty-note {
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ *
+ * Settings
+ * ------------------------------------------------------------------ */
+
+.settings summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings[open] summary { margin-bottom: 0.9rem; }
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.field label { font-size: 0.85rem; }
+.field > label:first-child { flex: 0 0 8rem; }
+
+.field input[type="date"],
+.field input[type="number"] {
+  flex: 1;
+  max-width: 12rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.field--check { align-items: flex-start; }
+.field--check label { flex: 1; }
+
+.field--actions {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.field--actions button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.field--actions .danger { color: var(--bad); border-color: var(--bad); }
+
+/* ------------------------------------------------------------------ *
+ * Credits
+ * ------------------------------------------------------------------ */
+
+.credits {
+  max-width: 780px;
+  margin: 2rem auto 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.credits a { color: inherit; }
+
+/* ------------------------------------------------------------------ *
+ * Print
+ * ------------------------------------------------------------------ */
+
+@page { size: Letter portrait; margin: 12mm; }
+
+@media print {
+  :root {
+    --bg: #fff;
+    --surface: #fff;
+    --text: #000;
+    --muted: #555;
+    --future-line: #ccc;
+    --past: #e5e5e5;
+  }
+
+  .card, .views, .stats, .legend, .status, .rollup { break-inside: avoid; }
+  .today, .settings, .status, .credits p:last-child { display: none; }
+
+  .chart-scroll { overflow: visible; }
+  .chart--days { min-width: 0; }
+
+  /* Browsers strip backgrounds when printing by default, which would erase the
+     entire chart. Force them on for the cells specifically. */
+  .chart i, .stat-value, .swatch {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
