@@ -5,7 +5,7 @@
  * install and served cache-first. Bump CACHE whenever you ship a change,
  * otherwise returning visitors keep the old copy.
  */
-var CACHE = 'lifetime-tracking-v2';
+var CACHE = 'lifetime-tracking-v3';
 
 var SHELL = [
   './',

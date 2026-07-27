@@ -1,6 +1,10 @@
 /**
  * Lifetime Tracking — styles.
  *
+ * The look is a printed poster: pressed paper, ink, hairline rules. Filled
+ * cells are solid ink-like colour, unlived ones are just an outline, and the
+ * grid is given room to breathe rather than being packed tight.
+ *
  * Cell colour is driven entirely by custom properties so the palette can be
  * swapped (classic green/red, or a blue/orange set that survives the most
  * common forms of colour blindness) without touching markup or data.
@@ -8,63 +12,137 @@
 
 /* ------------------------------------------------------------------ *
  * Tokens
+ *
+ * The names are generic (--bg, --surface, --border) so every component picks
+ * up the paper palette without needing its own rule.
  * ------------------------------------------------------------------ */
 
 :root {
-  --bg: #ffffff;
-  --surface: #f6f7f9;
-  --border: #e2e5ea;
-  --text: #16181d;
-  --muted: #6b7280;
-  --accent: #1e3a8a;
+  --bg: #f2efe6;              /* warm sheet */
+  --surface: rgba(255, 253, 247, 0.55);
+  --border: rgba(24, 22, 16, 0.16);
+  --text: #191710;
+  --muted: #6f6a5d;
+  --accent: #191710;          /* ink; the poster has no second colour */
 
-  --good: #16a34a;
-  --bad: #dc2626;
-  --tie: #a1a1aa;
-  --past: #ced5de;
-  --future: transparent;
-  --future-line: #e8ebef;
+  --good: #2f7a4d;
+  --bad: #c0322b;
+  --tie: #a9a294;
+  --past: #cac3b1;            /* lived, nothing recorded */
+  --future: transparent;      /* unlived cells are an outline only */
+  --future-line: rgba(24, 22, 16, 0.3);
 
-  --radius: 10px;
+  --grain: 0.5;
+  --fibre: 0.1;
+  --grain-blend: multiply;
+
+  --radius: 3px;              /* near-square: this is print, not a dashboard */
   --gap: 0.25rem;
 }
 
 body[data-palette="cbSafe"] {
-  --good: #1d4ed8;
-  --bad: #ea7317;
-  --tie: #9ca3af;
+  --good: #1f4f9e;
+  --bad: #cc6a12;
+  --tie: #a9a294;
+}
+
+/* Toned paper rather than a slab of black, so the texture still reads.
+ *
+ * Applied two ways, and plain CSS has no way to share one token list between
+ * them, so they are duplicated deliberately — change one, change the other:
+ *
+ *   [data-theme="dark"]  chosen explicitly in Settings
+ *   [data-theme="auto"]  following the operating system
+ *
+ * The default is neither: it is paper, whatever the OS prefers.
+ */
+:root[data-theme="dark"] {
+  --bg: #14130f;
+  --surface: rgba(255, 250, 235, 0.04);
+  --border: rgba(238, 233, 219, 0.16);
+  --text: #ece7d9;
+  --muted: #948d7d;
+  --accent: #ece7d9;
+
+  --good: #4f9e69;
+  --bad: #d4544c;
+  --tie: #6e695e;
+  --past: #34312a;
+  --future-line: rgba(238, 233, 219, 0.2);
+
+  --grain: 0.32;
+  --fibre: 0.1;
+  --grain-blend: overlay;
+}
+
+:root[data-theme="dark"] body[data-palette="cbSafe"] {
+  --good: #6f9fe0;
+  --bad: #e0904a;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --surface: #171a21;
-    --border: #262b35;
-    --text: #e8eaed;
-    --muted: #9aa2b1;
-    --accent: #93b4ff;
+  :root[data-theme="auto"] {
+    --bg: #14130f;
+    --surface: rgba(255, 250, 235, 0.04);
+    --border: rgba(238, 233, 219, 0.16);
+    --text: #ece7d9;
+    --muted: #948d7d;
+    --accent: #ece7d9;
 
-    --good: #22c55e;
-    --bad: #f04747;
-    --tie: #71717a;
-    --past: #333a47;
-    --future-line: #232833;
+    --good: #4f9e69;
+    --bad: #d4544c;
+    --tie: #6e695e;
+    --past: #34312a;
+    --future-line: rgba(238, 233, 219, 0.2);
+
+    --grain: 0.32;
+    --fibre: 0.1;
+    --grain-blend: overlay;
   }
   body[data-palette="cbSafe"] {
-    --good: #60a5fa;
-    --bad: #fb923c;
+    --good: #6f9fe0;
+    --bad: #e0904a;
   }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  background: var(--bg);
+}
+
 body {
   margin: 0;
-  padding: 1rem 1rem 3rem;
-  background: var(--bg);
+  padding: 1.5rem 1rem 4rem;
+  background: transparent;
   color: var(--text);
-  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-text-size-adjust: 100%;
+}
+
+/* Paper. Two SVG noise fields — fine tooth over long fibres — painted as a
+   fixed layer behind the content. Generated inline, so the page stays a
+   self-contained set of files with nothing to download. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mix-blend-mode: var(--grain-blend);
+}
+
+body::before {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='200'%20height='200'%3E%3Cfilter%20id='g'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='4'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='200'%20height='200'%20filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: var(--grain);
+}
+
+body::after {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='400'%20height='400'%3E%3Cfilter%20id='f'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.012%200.16'%20numOctaves='3'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='400'%20height='400'%20filter='url(%23f)'/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+  opacity: var(--fibre);
 }
 
 button, input { font: inherit; color: inherit; }
@@ -81,17 +159,25 @@ button, input { font: inherit; color: inherit; }
 
 .title {
   margin: 0;
-  font-size: clamp(1.5rem, 6vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  /* A heavy condensed grotesque is the whole voice of the poster. Impact and
+     Haettenschweiler cover macOS and Windows, Roboto Condensed covers Android;
+     the weight only applies to the fallbacks, since Impact has a single cut. */
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold",
+               "Roboto Condensed", "Franklin Gothic Bold", system-ui, sans-serif;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
 }
 
-.title-unit { color: var(--accent); }
+.title-unit { color: inherit; }
 
 .subtitle {
-  margin: 0.35rem 0 0;
+  margin: 0.5rem 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
 }
 
 /* ------------------------------------------------------------------ *
@@ -100,17 +186,19 @@ button, input { font: inherit; color: inherit; }
 
 .card {
   max-width: 780px;
-  margin: 0 auto 1rem;
-  padding: 1rem;
+  margin: 0 auto 1.5rem;
+  padding: 1.1rem 1.2rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
 .card-heading {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .hint {
@@ -202,9 +290,13 @@ kbd {
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+  gap: 1px;                      /* hairlines between cells, not around them */
   max-width: 780px;
-  margin: 0 auto 1.25rem;
+  margin: 0 auto 2rem;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 @media (min-width: 640px) {
@@ -215,9 +307,8 @@ kbd {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.6rem 0.3rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  padding: 0.7rem 0.3rem;
+  background: var(--bg);
 }
 
 .stat-value {
@@ -230,9 +321,11 @@ kbd {
 .stat-value--bad { color: var(--bad); }
 
 .stat-label {
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   text-align: center;
 }
 
@@ -242,38 +335,38 @@ kbd {
 
 .views {
   display: flex;
-  gap: 0.25rem;
+  justify-content: center;
+  gap: 1.75rem;
   max-width: 780px;
   margin: 0 auto;
-  padding: 0.25rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .view {
-  flex: 1;
   min-height: 2.5rem;
-  padding: 0.4rem;
+  padding: 0.3rem 0.1rem;
   border: 0;
-  border-radius: calc(var(--radius) - 4px);
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--muted);
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
 .view[aria-pressed="true"] {
-  background: var(--bg);
   color: var(--text);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  border-bottom-color: var(--text);
 }
 
 .rollup {
-  max-width: 780px;
-  margin: 0.75rem auto 0;
+  max-width: 620px;
+  margin: 1.1rem auto 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   text-align: center;
 }
 
@@ -283,19 +376,21 @@ kbd {
 
 .chart-area {
   max-width: 780px;
-  margin: 0.5rem auto 0;
+  margin: 1.5rem auto 0;
 }
 
 /* The narrow views centre themselves, and the x-axis label has to travel with
    them or it ends up floating off to the left of the grid it describes. */
-.chart-area--months { max-width: 520px; }
+.chart-area--months { max-width: 540px; }
 .chart-area--years { max-width: 680px; }
 
 .axis-x {
-  margin: 0 0 0.4rem 2.9rem;
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 600;
+  margin: 0 0 0.7rem 2.9rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .chart-scroll {
@@ -314,6 +409,7 @@ kbd {
 
 .lbl {
   flex: 0 0 1.7rem;
+  letter-spacing: 0.04em;
   align-self: center;
   color: var(--muted);
   font-size: 0.65rem;
@@ -347,13 +443,14 @@ kbd {
   border-radius: 2px;
 }
 
-/* A cell with no class is a stretch of life you have not reached yet.
-   One shape across all four views — only the pixel size changes. */
+/* A cell with no class is a stretch of life you have not reached yet: an
+   empty outline, as on the poster. One shape across all four views — only the
+   pixel size changes. Logged cells drop the border so they read as solid ink. */
 .chart i {
   display: block;
   aspect-ratio: 1;
   border: 1px solid var(--future-line);
-  border-radius: 2px;
+  border-radius: 1px;
   background: var(--future);
 }
 
@@ -362,17 +459,19 @@ kbd {
 .chart i.b { background: var(--bad); border-color: transparent; }
 .chart i.t { background: var(--tie); border-color: transparent; }
 
+/* Today. The poster marks it in red, but red already means a rough day here,
+   so this is an ink ring instead — legible on a filled or an empty cell. */
 .chart i.now {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
   z-index: 1;
 }
 
 /* Days — 366 columns, always wider than a phone, so it scrolls. */
 .chart--days {
-  --cell-min: 3px;
-  --gap: 1px;
-  min-width: 1160px;
+  --cell-min: 4px;
+  --gap: 2px;
+  min-width: 1420px;
 }
 
 .chart--days .cells { cursor: pointer; }
@@ -382,17 +481,32 @@ kbd {
    between pads is what makes a run of years read as one continuous block. */
 .slot {
   display: block;
-  padding: 3px;
-  border-radius: 3px;
+  position: relative;
+  /* Side padding keeps neighbouring years apart — without it, two adjacent
+     cells of the same colour merge into one bar. The strip below still spans
+     the full slot, so it stays unbroken across the run. */
+  padding: 0 3px 7px;
+}
+
+/* The phase strip. Slots butt together (gap: 0 below), so consecutive years in
+   one phase draw a single unbroken rule under the decade. */
+.slot::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--phase, transparent);
 }
 
 .chart--years .cells { gap: 0; }
 .chart--years .slot + .slot { margin-left: 0; }
 
+
+
 /* Weeks — the classic view, 52 columns. */
 .chart--weeks {
   --cell-min: 5px;
-  --gap: 2px;
+  --gap: 3px;
 }
 
 /* Months — twelve to a row.
@@ -402,15 +516,15 @@ kbd {
    the chart roughly twice as tall as it is now for no extra legibility. */
 .chart--months {
   --cell-min: 10px;
-  --gap: 4px;
-  max-width: 520px;
+  --gap: 6px;
+  max-width: 540px;
 }
 
 /* Years — ten to a row. Only nine rows exist, so width is nearly free here and
    this one can run close to the full chart width. */
 .chart--years {
   --cell-min: 12px;
-  --gap: 5px;
+  --gap: 8px;
   max-width: 680px;
 }
 
@@ -422,20 +536,22 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.35rem 1rem;
+  gap: 0.4rem 1.6rem;
   max-width: 780px;
-  margin: 1rem auto 1.5rem;
+  margin: 1.75rem auto 1.5rem;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
 
 .swatch {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.65rem;
+  height: 0.65rem;
   border: 1px solid var(--future-line);
-  border-radius: 2px;
+  border-radius: 1px;
 }
 
 .swatch--good { background: var(--good); border-color: transparent; }
@@ -450,9 +566,11 @@ kbd {
 .phase-legend {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  gap: 0.4rem 0.9rem;
+  gap: 0.8rem 1.2rem;
   max-width: 780px;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 2.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
 }
 
 .phase-legend[hidden] { display: none; }
@@ -473,7 +591,7 @@ kbd {
   border-radius: 3px;
 }
 
-.phase-name { font-weight: 600; }
+.phase-name { font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.7rem; }
 .phase-range { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .phase-stat {
@@ -601,7 +719,8 @@ kbd {
 .field > label:first-child { flex: 0 0 8rem; }
 
 .field input[type="date"],
-.field input[type="number"] {
+.field input[type="number"],
+.field select {
   flex: 1;
   max-width: 12rem;
   padding: 0.4rem 0.5rem;
@@ -763,6 +882,7 @@ kbd {
   .phase-legend { break-inside: avoid; }
 
   .chart-scroll { overflow: visible; }
+  body::before, body::after { display: none; }
   .chart--days { min-width: 0; }
 
   /* Browsers strip backgrounds when printing by default, which would erase the

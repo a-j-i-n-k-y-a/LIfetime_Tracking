@@ -394,14 +394,15 @@ async function main() {
     const slots = decade2.querySelectorAll('.slot');
 
     ok('years view wraps each cell in a phase slot', slots.length === 10, String(slots.length));
-    ok('slots are coloured', /rgba?\(/.test(slots[0].style.background), slots[0].style.background);
+    const phaseOf = n => n.style.getPropertyValue('--phase');
+    ok('slots are coloured', /rgba?\(/.test(phaseOf(slots[0])), phaseOf(slots[0]));
     ok('a phase boundary inside a row changes the slot colour',
-       slots[0].style.background !== slots[5].style.background,
-       slots[0].style.background + ' | ' + slots[5].style.background);
+       phaseOf(slots[0]) !== phaseOf(slots[5]),
+       phaseOf(slots[0]) + ' | ' + phaseOf(slots[5]));
     ok('ages 20-22 share the College colour',
-       slots[0].style.background === slots[2].style.background);
+       phaseOf(slots[0]) === phaseOf(slots[2]));
     ok('age 23 starts the next phase',
-       slots[2].style.background !== slots[3].style.background);
+       phaseOf(slots[2]) !== phaseOf(slots[3]));
     ok('slot carries the phase name', /College/.test(slots[0].title), slots[0].title);
     ok('years view drops the row tint in favour of slots',
        !decade2.querySelector('.cells').style.background,
@@ -495,6 +496,38 @@ async function main() {
     ok('chart follows a pulled change',
        /Sabbatical/.test(app.win.document.querySelectorAll('.chart .row')[33]
          .querySelector('.rail').title));
+  }
+
+  /* --- appearance ---------------------------------------------------- */
+  {
+    const server = makeServer();
+    const app = await boot(server);
+
+    // Paper regardless of what the operating system prefers — the whole point
+    // of the setting is that the look does not depend on a device toggle.
+    ok('defaults to paper', app.localState() === null || app.$('theme').value === 'paper');
+    ok('paper applied to the root element',
+       app.win.document.documentElement.dataset.theme === 'paper',
+       app.win.document.documentElement.dataset.theme);
+
+    app.$('theme').value = 'dark';
+    app.$('theme').dispatchEvent(new app.win.Event('change'));
+    ok('dark applied', app.win.document.documentElement.dataset.theme === 'dark');
+    ok('dark persisted', app.localState().theme === 'dark');
+
+    app.$('theme').value = 'auto';
+    app.$('theme').dispatchEvent(new app.win.Event('change'));
+    ok('auto applied', app.win.document.documentElement.dataset.theme === 'auto');
+
+    app.$('theme').value = 'paper';
+    app.$('theme').dispatchEvent(new app.win.Event('change'));
+    ok('back to paper', app.localState().theme === 'paper');
+
+    // Appearance travels with the log, like any other setting.
+    app.$('ghToken').value = 'tok';
+    app.$('btnConnect').click();
+    await app.settle();
+    ok('theme reaches the gist', server.stored().theme === 'paper', String(server.stored().theme));
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);

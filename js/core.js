@@ -139,7 +139,7 @@
    * ------------------------------------------------------------------ */
 
   var VERSION = 2;
-  var SETTINGS = ['dob', 'lifespan', 'palette', 'phases'];
+  var SETTINGS = ['dob', 'lifespan', 'palette', 'phases', 'theme'];
   var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   var HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -179,6 +179,10 @@
       dob: null,
       lifespan: 90,
       palette: 'classic',
+      // Paper by default rather than following the system. The look is the
+      // point of the app, and honouring a dark OS setting would mean most
+      // people never see it.
+      theme: 'paper',
       phases: JSON.parse(JSON.stringify(DEFAULT_PHASES)),
       entries: {},
       meta: { entries: {}, settings: {}, hlc: 0 }
@@ -217,6 +221,7 @@
     if (field === 'dob') return value === null || (typeof value === 'string' && DATE_RE.test(value));
     if (field === 'lifespan') return typeof value === 'number' && value >= 1 && value <= 130;
     if (field === 'phases') return Array.isArray(value);
+    if (field === 'theme') return value === 'paper' || value === 'dark' || value === 'auto';
     return value === 'classic' || value === 'cbSafe';
   }
 

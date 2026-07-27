@@ -57,7 +57,7 @@
       'btnGood', 'btnBad', 'btnClear',
       'statLogged', 'statGood', 'statBad', 'statPercent', 'statStreak', 'statBest',
       'rollup', 'axisX', 'chart', 'chartArea', 'emptyNote', 'status', 'settings',
-      'dob', 'lifespan', 'palette',
+      'dob', 'lifespan', 'palette', 'theme',
       'btnExport', 'btnImport', 'btnPrint', 'btnReset', 'importFile',
       'syncBadge', 'syncSummary', 'syncConnect', 'syncActive',
       'ghToken', 'btnConnect', 'btnSyncNow', 'btnDisconnect', 'gistLink',
@@ -69,6 +69,7 @@
     el.dob.value = state.dob || '';
     el.lifespan.value = state.lifespan;
     el.palette.checked = state.palette === 'cbSafe';
+    el.theme.value = state.theme;
 
     var todayKey = LT.toKey(LT.today());
     el.logDate.value = todayKey;
@@ -126,6 +127,11 @@
 
     el.palette.addEventListener('change', function () {
       LT.setSetting(state, 'palette', el.palette.checked ? 'cbSafe' : 'classic');
+      commit();
+    });
+
+    el.theme.addEventListener('change', function () {
+      LT.setSetting(state, 'theme', el.theme.value);
       commit();
     });
 
@@ -215,6 +221,9 @@
     agg = LT.aggregate(state);
 
     document.body.dataset.palette = state.palette;
+    // On the root, not the body: the paper colour is painted on <html> so the
+    // page has no seam below the content when the document is short.
+    document.documentElement.dataset.theme = state.theme;
     el.chartArea.className = 'chart-area chart-area--' + view;
     el.titleUnit.textContent = VIEWS[view].unit;
     el.axisX.textContent = VIEWS[view].axis;
@@ -428,8 +437,8 @@
   //
   // The years view has no rail (a row there is a decade, not an age), so it
   // gets a stronger block behind each cell instead and needs no row tint.
-  var TINT_ALPHA = 0.1;
-  var BLOCK_ALPHA = 0.28;
+  var TINT_ALPHA = 0.09;
+  var BLOCK_ALPHA = 0.8;
 
   function rgba(hex, alpha) {
     var n = parseInt(hex.slice(1), 16);
@@ -469,7 +478,11 @@
     var phase = LT.phaseAt(state.phases || [], age);
     if (!phase) return '<span class=slot>';
 
-    return '<span class=slot style="background:' + rgba(phase.color, BLOCK_ALPHA) +
+    // A strip under the cell rather than a pad behind it. A wash behind an
+    // unlived year turns its outline into a filled tile and the year stops
+    // reading as a cell at all; sitting underneath, consecutive years still
+    // join into one unbroken line without touching the grid itself.
+    return '<span class=slot style="--phase:' + rgba(phase.color, BLOCK_ALPHA) +
            '" title="' + escapeHtml(phase.label || 'Phase') + ' · ages ' +
            phase.from + '–' + phase.to + '">';
   }
@@ -489,7 +502,7 @@
     var endsHere = !next || LT.phaseAt(state.phases, next.startAge) !== phase;
     var edge = (startsHere ? ' rail--first' : '') + (endsHere ? ' rail--last' : '');
 
-    return '<span class="rail' + edge + '" style="background:' + rgba(phase.color, 0.85) +
+    return '<span class="rail' + edge + '" style="background:' + rgba(phase.color, 0.72) +
            '" title="' + escapeHtml(phase.label || 'Phase') + ' · ages ' +
            phase.from + '–' + phase.to + '"></span>';
   }
@@ -518,7 +531,7 @@
 
       return '<span class="phase-item"' +
         ' title="' + escapeHtml(phase.label || 'Phase') + ': ' + detail + '">' +
-        '<i class="phase-swatch" style="background:' + rgba(phase.color, 0.85) + '"></i>' +
+        '<i class="phase-swatch" style="background:' + rgba(phase.color, 0.72) + '"></i>' +
         '<span class="phase-name">' + escapeHtml(phase.label || '—') + '</span>' +
         '<span class="phase-range">' + phase.from + '–' + phase.to + '</span>' +
         '<span class="phase-stat">' + detail + '</span>' +
@@ -738,6 +751,7 @@
     LT.setSetting(state, 'dob', null);
     LT.setSetting(state, 'lifespan', 90);
     LT.setSetting(state, 'palette', 'classic');
+    LT.setSetting(state, 'theme', 'paper');
 
     LT.save(state);
     global.LTSync.schedule(getState, 0);
@@ -745,6 +759,7 @@
     el.dob.value = '';
     el.lifespan.value = state.lifespan;
     el.palette.checked = false;
+    el.theme.value = 'paper';
     builtKey = null;
 
     render();
@@ -915,6 +930,7 @@
     el.dob.value = state.dob || '';
     el.lifespan.value = state.lifespan;
     el.palette.checked = state.palette === 'cbSafe';
+    el.theme.value = state.theme;
     builtKey = null;
     render();
     renderPhaseEditor();
