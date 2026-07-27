@@ -111,17 +111,10 @@ otherwise never show the thing, so the OS preference is not followed unless you 
 *Settings → Appearance* offers **Paper**, **Dark** (toned paper, not a slab of black) and
 **Match my device**. The choice syncs across devices with everything else.
 
-Behind it all, the poster's lattice of cells drifts slowly across the page — one tile every
-16 seconds, on an infinite seamless loop. It is a mask rather than a coloured image, so it
-takes its colour from the current theme, and it moves by `transform` rather than
-`background-position`, so the browser composites it on the GPU and it costs nothing per
-frame. The tile tightens from 24px to 18px on a phone, where the larger one reads as coarse.
-`prefers-reduced-motion` stops it.
-
 Hovering a cell gives you `22 | College | 2025` — age, chapter, when. Not a readout of the
 tally: the colour has already told you how it went.
 
-The grain and the drift are both suppressed when printing.
+The grain is suppressed when printing — it would only waste toner.
 
 ## Your data
 

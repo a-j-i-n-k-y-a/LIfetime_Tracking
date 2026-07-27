@@ -36,9 +36,6 @@
   --fibre: 0.1;
   --grain-blend: multiply;
 
-  --drift-tile: 24px;
-  --drift-opacity: 0.05;
-  --drift-speed: 16s;
 
   --radius: 3px;              /* near-square: this is print, not a dashboard */
   --gap: 0.25rem;
@@ -81,7 +78,6 @@ body[data-palette="cbSafe"] {
   --fibre: 0.09;
   --grain-blend: overlay;
 
-  --drift-opacity: 0.07;
 }
 
 :root[data-theme="dark"] body[data-palette="cbSafe"] {
@@ -108,67 +104,11 @@ body[data-palette="cbSafe"] {
     --fibre: 0.09;
     --grain-blend: overlay;
 
-    --drift-opacity: 0.07;
   }
   body[data-palette="cbSafe"] {
     --good: #80abd7;
     --bad: #d8894a;
   }
-}
-
-/* ------------------------------------------------------------------ *
- * Drifting grid
- *
- * The poster's lattice of cells, moving. It travels exactly one tile per
- * cycle, so the loop is seamless and there is no visible restart.
- *
- * Two deliberate choices:
- *
- *   transform, not background-position — a transform is composited on the
- *   GPU, so this costs nothing per frame; animating background-position
- *   would repaint the whole viewport forever.
- *
- *   a mask, not a coloured SVG — the colour then comes from --text, so the
- *   layer follows the theme instead of needing one encoded image per palette.
- * ------------------------------------------------------------------ */
-
-.drift {
-  position: fixed;
-  /* A tile of slack all round, so the travel never exposes an edge. */
-  inset: calc(var(--drift-tile) * -1);
-  z-index: -1;
-  pointer-events: none;
-  opacity: var(--drift-opacity);
-  animation: drift var(--drift-speed) linear infinite;
-}
-
-/* Without mask support the background colour would flood the viewport, so it
-   is only applied where the mask can actually cut it into a grid. */
-@supports (mask-image: url("#m")) or (-webkit-mask-image: url("#m")) {
-  .drift {
-    background-color: var(--text);
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%3E%3Crect%20x='3.5'%20y='3.5'%20width='17'%20height='17'%20rx='1'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%3E%3Crect%20x='3.5'%20y='3.5'%20width='17'%20height='17'%20rx='1'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3C/svg%3E");
-    -webkit-mask-size: var(--drift-tile) var(--drift-tile);
-    mask-size: var(--drift-tile) var(--drift-tile);
-    -webkit-mask-repeat: repeat;
-    mask-repeat: repeat;
-  }
-}
-
-@keyframes drift {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(var(--drift-tile), var(--drift-tile), 0); }
-}
-
-/* Denser on a phone: the same 24px tile reads as oversized on a small screen. */
-@media (max-width: 600px) {
-  :root { --drift-tile: 18px; }
-}
-
-/* Motion is the one part of this that can genuinely bother people. */
-@media (prefers-reduced-motion: reduce) {
-  .drift { animation: none; }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -954,7 +894,7 @@ kbd {
   .phase-legend { break-inside: avoid; }
 
   .chart-scroll { overflow: visible; }
-  body::before, body::after, .drift { display: none; }
+  body::before, body::after { display: none; }
   .chart--days { min-width: 0; }
 
   /* Browsers strip backgrounds when printing by default, which would erase the
