@@ -617,41 +617,63 @@
     if (tooltip) tooltip.hidden = true;
   }
 
+  /**
+   * What a cell says on hover: age, the chapter it falls in, and when.
+   *
+   *   22  |  College  |  2025
+   *
+   * Deliberately not a readout of the tally. The colour already says how the
+   * period went; repeating it in words only gets in the way of scanning.
+   */
   function describeCell(cell) {
     if (!cell || !state.dob) return '';
 
     var dob = LT.fromKey(state.dob);
     var phase = LT.phaseAt(state.phases || [], cell.age);
-    var chapter = phase && phase.label ? ' · ' + phase.label : '';
+    var when;
 
     if (view === 'days') {
-      var mark = state.entries[cell.dateKey];
-      return prettyDate(cell.dateKey) + ' · age ' + cell.age + chapter + ' · ' +
-        (mark === LT.GOOD ? 'good' : mark === LT.BAD ? 'rough' : cell.future ? 'ahead of you' : 'not logged');
-    }
+      when = LT.fromKey(cell.dateKey).toLocaleDateString(undefined, {
+        day: 'numeric', month: 'short', year: 'numeric'
+      });
 
-    if (view === 'years') {
-      var year = agg.years[cell.age];
-      return 'Age ' + cell.age + ' · ' + LT.anniversary(dob, cell.age).getFullYear() + chapter +
-        ' · ' + tallyText(year, 'month');
-    }
-
-    if (view === 'weeks') {
-      var week = agg.weeks[cell.age][cell.idx];
+    } else if (view === 'weeks') {
       var start = LT.addDays(LT.anniversary(dob, cell.age), cell.idx * 7);
       var end = cell.idx === LT.WEEKS_PER_YEAR - 1
         ? LT.addDays(LT.anniversary(dob, cell.age + 1), -1)
         : LT.addDays(start, 6);
-      return 'Age ' + cell.age + ', week ' + (cell.idx + 1) + chapter + ' · ' +
-        prettyDate(LT.toKey(start)) + ' – ' + prettyDate(LT.toKey(end)) + ' · ' +
-        tallyText(week, 'day');
+      when = span(start, end);
+
+    } else if (view === 'months') {
+      // A month here runs from a birthday, so it straddles two calendar
+      // months. Label it by the one holding its midpoint — the single most
+      // representative name for it.
+      var range = weekRangeForMonth(cell.idx);
+      var mid = LT.addDays(LT.anniversary(dob, cell.age), range.first * 7 + 14);
+      when = mid.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+
+    } else {
+      when = String(LT.anniversary(dob, cell.age).getFullYear());
     }
 
-    var month = agg.months[cell.age][cell.idx];
-    var range = weekRangeForMonth(cell.idx);
-    return 'Age ' + cell.age + ', month ' + (cell.idx + 1) + chapter +
-      ' · weeks ' + (range.first + 1) + '–' + (range.last + 1) + ' · ' +
-      tallyText(month, 'week');
+    return [cell.age, phase && phase.label, when]
+      .filter(function (part) { return part || part === 0; })
+      .join('  |  ');
+  }
+
+  /** "3 – 9 Nov 2025", dropping whatever the two ends already share. */
+  function span(from, to) {
+    var sameMonth = from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear();
+    var sameYear = from.getFullYear() === to.getFullYear();
+
+    var head = sameMonth
+      ? from.toLocaleDateString(undefined, { day: 'numeric' })
+      : from.toLocaleDateString(undefined, sameYear
+          ? { day: 'numeric', month: 'short' }
+          : { day: 'numeric', month: 'short', year: 'numeric' });
+
+    var tail = to.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    return head + ' – ' + tail;
   }
 
   function weekRangeForMonth(month) {
@@ -664,19 +686,6 @@
       }
     }
     return { first: first, last: last };
-  }
-
-  function tallyText(bucket, noun) {
-    if (!bucket.good && !bucket.bad) return 'nothing logged';
-    var parts = [];
-    if (bucket.good) parts.push(bucket.good + ' good ' + plural(noun, bucket.good));
-    if (bucket.bad) parts.push(bucket.bad + ' rough ' + plural(noun, bucket.bad));
-    var label = bucket.mark === LT.TIE ? 'even split' : bucket.mark === LT.GOOD ? 'good' : 'rough';
-    return parts.join(', ') + ' → ' + label;
-  }
-
-  function plural(noun, count) {
-    return count === 1 ? noun : noun + 's';
   }
 
   /* ------------------------------------------------------------------ *
