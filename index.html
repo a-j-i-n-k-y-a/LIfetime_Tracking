@@ -98,6 +98,55 @@
     <label for="palette">Colour-blind friendly palette (blue / orange)</label>
   </div>
 
+  <!-- Sync ------------------------------------------------------------ -->
+  <section class="sync" aria-labelledby="syncHeading">
+    <h3 class="sync-heading" id="syncHeading">
+      Sync across devices
+      <span class="sync-badge" id="syncBadge" data-state="off">Off</span>
+    </h3>
+
+    <p class="hint" id="syncSummary">
+      Keeps your laptop and phone on the same log, using a private GitHub Gist as
+      the store. Edits made on either device — even offline — are merged, never
+      overwritten.
+    </p>
+
+    <div class="field" id="syncConnect">
+      <label for="ghToken">GitHub token</label>
+      <input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="off"
+             spellcheck="false" autocapitalize="off">
+      <button type="button" id="btnConnect">Connect</button>
+    </div>
+
+    <div class="field" id="syncActive" hidden>
+      <button type="button" id="btnSyncNow">Sync now</button>
+      <a id="gistLink" href="#" target="_blank" rel="noopener noreferrer">Open the gist</a>
+      <button type="button" class="danger" id="btnDisconnect">Disconnect</button>
+    </div>
+
+    <details class="sync-help">
+      <summary>Creating the token</summary>
+      <ol>
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new"
+            target="_blank" rel="noopener noreferrer">Fine-grained personal access tokens →
+            Generate new token</a>.</li>
+        <li>Name it anything. Set an expiry you're happy to renew.</li>
+        <li>Leave repository access alone — this needs none.</li>
+        <li>Under <strong>Account permissions</strong>, set <strong>Gists</strong> to
+            <strong>Read and write</strong>. Nothing else.</li>
+        <li>Generate, copy the <code>github_pat_…</code> value, paste it above.</li>
+      </ol>
+      <p class="warn">
+        The token is stored in this browser's local storage so it survives a reload.
+        Anyone with access to this device, or to this page through a scripting bug,
+        could read it — and it can read and write <em>all</em> of your gists, not just
+        this one. Use a fine-grained token with an expiry, keep it off shared machines,
+        and revoke it from GitHub settings if you stop using the app. Your token is
+        never written to the gist.
+      </p>
+    </details>
+  </section>
+
   <div class="field field--actions">
     <button type="button" id="btnExport">Export JSON</button>
     <button type="button" id="btnImport">Import JSON</button>
@@ -107,9 +156,9 @@
   </div>
 
   <p class="hint">
-    Everything lives in this browser's local storage — nothing is uploaded anywhere.
-    Export regularly if you care about the data, and import it to move between your
-    laptop and your phone.
+    Without sync, everything stays in this browser's local storage and nothing leaves
+    the device. Export/Import JSON moves a log between devices by hand; imports merge
+    rather than replace, so they're safe in either direction.
   </p>
 </details>
 
@@ -121,6 +170,7 @@
 </footer>
 
 <script src="js/core.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

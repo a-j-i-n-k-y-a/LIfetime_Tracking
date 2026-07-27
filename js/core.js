@@ -138,40 +138,190 @@
    * Store
    * ------------------------------------------------------------------ */
 
-  var DEFAULTS = {
-    version: 1,
-    dob: null,
-    lifespan: 90,
-    palette: 'classic',
-    entries: {}
-  };
+  var VERSION = 2;
+  var SETTINGS = ['dob', 'lifespan', 'palette'];
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  /**
+   * State shape (v2):
+   *
+   *   entries        { '2026-07-27': 'good' }   the log itself
+   *   meta.entries   { '2026-07-27': 1753… }    when each key was last written
+   *   meta.settings  { dob: 1753…, … }          when each setting was last written
+   *   meta.hlc                                  highest stamp this device has issued or seen
+   *
+   * A key present in meta.entries but absent from entries is a **tombstone**: a
+   * day that was deliberately cleared. Without it, a delete on the phone would
+   * be silently resurrected by the laptop on the next sync.
+   */
   function defaultState() {
-    return JSON.parse(JSON.stringify(DEFAULTS));
+    return {
+      version: VERSION,
+      dob: null,
+      lifespan: 90,
+      palette: 'classic',
+      entries: {},
+      meta: { entries: {}, settings: {}, hlc: 0 }
+    };
+  }
+
+  function validSetting(field, value) {
+    if (field === 'dob') return value === null || (typeof value === 'string' && DATE_RE.test(value));
+    if (field === 'lifespan') return typeof value === 'number' && value >= 1 && value <= 130;
+    return value === 'classic' || value === 'cbSafe';
   }
 
   function sanitize(raw) {
     var state = defaultState();
     if (!raw || typeof raw !== 'object') return state;
 
-    if (typeof raw.dob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.dob)) {
-      state.dob = raw.dob;
-    }
-    if (typeof raw.lifespan === 'number' && raw.lifespan >= 1 && raw.lifespan <= 130) {
-      state.lifespan = Math.floor(raw.lifespan);
-    }
-    if (raw.palette === 'classic' || raw.palette === 'cbSafe') {
-      state.palette = raw.palette;
-    }
+    SETTINGS.forEach(function (field) {
+      var value = raw[field];
+      if (field === 'lifespan' && typeof value === 'number') value = Math.floor(value);
+      if (validSetting(field, value) && value !== null) state[field] = value;
+    });
+
     if (raw.entries && typeof raw.entries === 'object') {
       Object.keys(raw.entries).forEach(function (key) {
         var mark = raw.entries[key];
-        if (/^\d{4}-\d{2}-\d{2}$/.test(key) && (mark === GOOD || mark === BAD)) {
-          state.entries[key] = mark;
+        if (DATE_RE.test(key) && (mark === GOOD || mark === BAD)) state.entries[key] = mark;
+      });
+    }
+
+    var meta = raw.meta && typeof raw.meta === 'object' ? raw.meta : null;
+
+    if (meta && meta.entries && typeof meta.entries === 'object') {
+      Object.keys(meta.entries).forEach(function (key) {
+        var at = meta.entries[key];
+        // Tombstones are legitimate here, so accept stamps for keys with no
+        // surviving entry. Only the date format and the number are checked.
+        if (DATE_RE.test(key) && typeof at === 'number' && isFinite(at) && at > 0) {
+          state.meta.entries[key] = Math.floor(at);
         }
       });
     }
+
+    if (meta && meta.settings && typeof meta.settings === 'object') {
+      SETTINGS.forEach(function (field) {
+        var at = meta.settings[field];
+        if (typeof at === 'number' && isFinite(at) && at > 0) {
+          state.meta.settings[field] = Math.floor(at);
+        }
+      });
+    }
+
+    if (meta && typeof meta.hlc === 'number' && isFinite(meta.hlc) && meta.hlc > 0) {
+      state.meta.hlc = Math.floor(meta.hlc);
+    }
+
+    // Migrating a v1 file (or any export with no stamps): date everything to
+    // now. Crucially this creates no tombstones, so a first sync between two
+    // devices can only ever be a union — it cannot delete anything.
+    if (!meta) {
+      var at = Date.now();
+      Object.keys(state.entries).forEach(function (key) { state.meta.entries[key] = at; });
+      SETTINGS.forEach(function (field) { state.meta.settings[field] = at; });
+      state.meta.hlc = at;
+    }
+
     return state;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Stamps and mutation
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Issue a timestamp that is always greater than any this device has seen,
+   * even if the system clock is behind the other device's. A pure Date.now()
+   * would let a laptop with a slow clock lose every conflict to the phone
+   * forever; this is a cheap hybrid logical clock that bounds that damage.
+   */
+  function nextStamp(state) {
+    state.meta.hlc = Math.max(Date.now(), (state.meta.hlc || 0) + 1);
+    return state.meta.hlc;
+  }
+
+  /** Record the highest stamp seen from elsewhere so our next one beats it. */
+  function observeStamp(state, at) {
+    if (typeof at === 'number' && at > (state.meta.hlc || 0)) state.meta.hlc = at;
+  }
+
+  function setEntry(state, key, mark) {
+    if (!DATE_RE.test(key)) return state;
+
+    if (mark === GOOD || mark === BAD) state.entries[key] = mark;
+    else delete state.entries[key]; // the stamp below becomes the tombstone
+
+    state.meta.entries[key] = nextStamp(state);
+    return state;
+  }
+
+  function setSetting(state, field, value) {
+    if (SETTINGS.indexOf(field) === -1 || !validSetting(field, value)) return state;
+    state[field] = value;
+    state.meta.settings[field] = nextStamp(state);
+    return state;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Merge
+   * ------------------------------------------------------------------ */
+
+  /**
+   * Last-write-wins per key, which makes this a proper CRDT: merging is
+   * commutative, associative and idempotent, so two devices that exchange
+   * states in any order and any number of times end up identical.
+   *
+   * Equal stamps are the only ambiguous case, and it is broken deterministically
+   * (present beats absent, then the lexicographically larger mark) so both sides
+   * still reach the same answer without talking to each other.
+   */
+  function pick(va, vb, ta, tb, tiebreak) {
+    if (ta > tb) return va;
+    if (tb > ta) return vb;
+    return tiebreak(va, vb);
+  }
+
+  function preferPresent(va, vb) {
+    if (va === vb) return va;
+    if (va === null || va === undefined) return vb;
+    if (vb === null || vb === undefined) return va;
+    return String(va) > String(vb) ? va : vb;
+  }
+
+  function mergeStates(a, b) {
+    var left = sanitize(a);
+    var right = sanitize(b);
+    var out = defaultState();
+
+    out.meta.hlc = Math.max(left.meta.hlc, right.meta.hlc);
+
+    SETTINGS.forEach(function (field) {
+      var ta = left.meta.settings[field] || 0;
+      var tb = right.meta.settings[field] || 0;
+      var value = pick(left[field], right[field], ta, tb, preferPresent);
+
+      if (value !== null && value !== undefined) out[field] = value;
+      if (Math.max(ta, tb)) out.meta.settings[field] = Math.max(ta, tb);
+    });
+
+    var keys = Object.create(null);
+    [left.entries, left.meta.entries, right.entries, right.meta.entries].forEach(function (map) {
+      Object.keys(map).forEach(function (key) { keys[key] = true; });
+    });
+
+    Object.keys(keys).forEach(function (key) {
+      var ta = left.meta.entries[key] || 0;
+      var tb = right.meta.entries[key] || 0;
+      var mark = pick(left.entries[key] || null, right.entries[key] || null, ta, tb, preferPresent);
+      var at = Math.max(ta, tb);
+
+      if (mark) out.entries[key] = mark;
+      if (at) out.meta.entries[key] = at;   // kept even with no mark: tombstone
+    });
+
+    return out;
   }
 
   function load() {
@@ -367,6 +517,12 @@
     defaultState: defaultState,
     sanitize: sanitize,
     load: load,
-    save: save
+    save: save,
+
+    nextStamp: nextStamp,
+    observeStamp: observeStamp,
+    setEntry: setEntry,
+    setSetting: setSetting,
+    mergeStates: mergeStates
   };
 })(window);

@@ -11,6 +11,8 @@ backend to host, ever.
 | **4. Capacitor → native APK** | 2–4 hr | ₹0 | yes | yes | possible | **yes** |
 | *Play Store listing (adds to 2/3/4)* | +1 day | ₹2,100 once | | | yes | |
 
+Cross-device sync works in all four — see [the last section](#keeping-the-laptop-and-the-phone-in-step).
+
 **Start with option 1.** On a OnePlus Nord 2T it gives you a real app icon, full screen with
 no address bar, and full offline use. Move to option 4 only if you decide you want a
 notification at 9pm telling you to log the day — that is the one thing a PWA can't do
@@ -45,9 +47,9 @@ offline once the service worker has cached the shell.
 > (capital I, lowercase f) and GitHub Pages URLs are case-sensitive even though repo names
 > aren't.
 
-**Limits.** Data is per-device — the laptop and the phone keep separate logs. Use
-Export/Import JSON to reconcile them. And Android will not wake a PWA to fire a scheduled
-notification reliably; the OS aggressively kills background service workers.
+**Limits.** Android will not wake a PWA to fire a scheduled notification reliably — the OS
+kills background service workers aggressively. That is the only real gap, and the only reason
+to consider option 4. Cross-device sync is *not* a gap: it works here, see below.
 
 ---
 
@@ -170,17 +172,25 @@ Android phone anyway.
 
 ---
 
-## If you later want the laptop and phone to actually sync
+## Keeping the laptop and the phone in step
 
-Right now they don't — Export/Import JSON is the bridge. Real sync means a backend and an
-account. In rough order of effort:
+**This is built in** — see *Syncing your laptop and your phone* in the
+[README](README.md#syncing-your-laptop-and-your-phone). Settings → Sync across devices, paste
+a fine-grained GitHub token with the Gists permission on each device, done. The second device
+finds the gist on its own.
 
-- **GitHub Gist as a store** — you already have a token. A private gist holding the JSON,
-  read on load and written on change. Perhaps 50 lines. No new service, no cost.
-- **Supabase** — Postgres plus auth on a free tier; the honest choice if you want this to
-  become multi-device properly.
-- **Firebase Realtime Database** — simplest offline-first sync story, but it drags in the
-  Google SDK and turns a 20 KB app into a megabyte.
+Edits merge rather than overwrite, including edits made offline on both devices at once, so
+you can log on the phone during the day and on the laptop in the evening without losing
+either.
 
-None of these are necessary for one person logging one day at a time. Export before you wipe
-a device and you'll be fine.
+Two things worth knowing:
+
+- Sync works in **every** option here — it is ordinary `fetch` to `api.github.com`, which
+  sends permissive CORS headers. The service worker deliberately leaves cross-origin requests
+  alone so a cached response can never be replayed as a sync result.
+- It needs the network at the moment it runs, but nothing else. Offline, the app keeps
+  logging locally and pushes the backlog when you're back.
+
+If you ever outgrow a gist, **Supabase** (Postgres plus auth, free tier) is the honest next
+step. You would keep `core.mergeStates` exactly as it is and swap only `js/sync.js` — the
+transport is deliberately separate from the conflict logic.

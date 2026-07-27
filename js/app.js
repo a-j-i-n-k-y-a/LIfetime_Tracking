@@ -58,7 +58,9 @@
       'statLogged', 'statGood', 'statBad', 'statPercent', 'statStreak', 'statBest',
       'rollup', 'axisX', 'chart', 'emptyNote', 'status', 'settings',
       'dob', 'lifespan', 'palette',
-      'btnExport', 'btnImport', 'btnPrint', 'btnReset', 'importFile'
+      'btnExport', 'btnImport', 'btnPrint', 'btnReset', 'importFile',
+      'syncBadge', 'syncSummary', 'syncConnect', 'syncActive',
+      'ghToken', 'btnConnect', 'btnSyncNow', 'btnDisconnect', 'gistLink'
     ].forEach(function (id) { el[id] = document.getElementById(id); });
 
     el.views = document.querySelectorAll('.view');
@@ -77,6 +79,7 @@
     if (!state.dob) el.settings.open = true;
 
     render();
+    initSync();
     registerServiceWorker();
   }
 
@@ -98,7 +101,8 @@
     });
 
     el.dob.addEventListener('change', function () {
-      state.dob = el.dob.value || null;
+      if (!el.dob.value) return;
+      LT.setSetting(state, 'dob', el.dob.value);
       commit();
     });
 
@@ -108,12 +112,12 @@
         el.lifespan.value = state.lifespan;
         return;
       }
-      state.lifespan = years;
+      LT.setSetting(state, 'lifespan', years);
       commit();
     });
 
     el.palette.addEventListener('change', function () {
-      state.palette = el.palette.checked ? 'cbSafe' : 'classic';
+      LT.setSetting(state, 'palette', el.palette.checked ? 'cbSafe' : 'classic');
       commit();
     });
 
@@ -147,7 +151,12 @@
     if (!LT.save(state)) {
       say('Could not save — local storage is unavailable in this browser.');
     }
+    global.LTSync.schedule(getState);
     render();
+  }
+
+  function getState() {
+    return state;
   }
 
   function setMark(mark) {
@@ -158,10 +167,11 @@
       return;
     }
 
-    if (mark) state.entries[key] = mark;
-    else delete state.entries[key];
-
+    LT.setEntry(state, key, mark);
     LT.save(state);
+    global.LTSync.schedule(getState);
+
+    // Cheaper than a full render: only the tallies and the cells changed.
     agg = LT.aggregate(state);
     renderToday();
     renderStats();
@@ -569,21 +579,22 @@
         return;
       }
 
-      var added = 0;
-      var changed = 0;
+      var before = Object.keys(state.entries).length;
 
-      Object.keys(incoming.entries).forEach(function (key) {
-        if (!(key in state.entries)) added++;
-        else if (state.entries[key] !== incoming.entries[key]) changed++;
-        state.entries[key] = incoming.entries[key];
-      });
+      // Same merge the sync path uses, so importing a file and syncing a device
+      // resolve conflicts identically.
+      state = LT.mergeStates(state, incoming);
 
-      if (!state.dob && incoming.dob) state.dob = incoming.dob;
-      if (incoming.dob) el.dob.value = state.dob;
+      var added = Object.keys(state.entries).length - before;
+
+      el.dob.value = state.dob || '';
+      el.lifespan.value = state.lifespan;
+      el.palette.checked = state.palette === 'cbSafe';
 
       builtKey = null;
       commit();
-      say('Imported — ' + added + ' new, ' + changed + ' updated.');
+      say('Merged ' + Object.keys(incoming.entries).length + ' entries — ' +
+          added + ' new to this device.');
     };
 
     reader.readAsText(file);
@@ -593,8 +604,16 @@
   function resetAll() {
     if (!global.confirm('Erase your date of birth and every logged day? This cannot be undone.')) return;
 
-    state = LT.defaultState();
+    // Clear each day through setEntry so every removal leaves a tombstone. A
+    // bare reset would look like "this device knows nothing" and the next sync
+    // would cheerfully restore everything from the gist.
+    Object.keys(state.entries).forEach(function (key) { LT.setEntry(state, key, null); });
+    LT.setSetting(state, 'dob', null);
+    LT.setSetting(state, 'lifespan', 90);
+    LT.setSetting(state, 'palette', 'classic');
+
     LT.save(state);
+    global.LTSync.schedule(getState, 0);
 
     el.dob.value = '';
     el.lifespan.value = state.lifespan;
@@ -603,6 +622,124 @@
 
     render();
     say('Everything erased.');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Sync
+   * ------------------------------------------------------------------ */
+
+  var Sync = global.LTSync;
+
+  function initSync() {
+    Sync.onChange(renderSync);
+
+    el.btnConnect.addEventListener('click', function () {
+      var token = el.ghToken.value.trim();
+      if (!token) { say('Paste a GitHub token first.'); return; }
+
+      el.btnConnect.disabled = true;
+
+      Sync.connect(token, state)
+        .then(function (result) {
+          el.ghToken.value = '';
+          adopt(result.state);
+          say(result.created
+            ? 'Connected — created a new private gist for your log.'
+            : 'Connected — merged with the log already in your gist.');
+        })
+        .catch(function (err) {
+          say('Could not connect: ' + err.message);
+        })
+        .then(function () {
+          el.btnConnect.disabled = false;
+          renderSync();
+        });
+    });
+
+    el.btnSyncNow.addEventListener('click', function () {
+      Sync.flush(getState).then(adopt);
+    });
+
+    el.btnDisconnect.addEventListener('click', function () {
+      if (!global.confirm('Stop syncing this device? Your log stays on the device and in the gist.')) return;
+      Sync.disconnect();
+      say('Disconnected. This device no longer syncs.');
+      renderSync();
+    });
+
+    // Coming back to the app is the moment the other device's edits matter most.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) Sync.sync(state).then(adopt);
+    });
+
+    global.addEventListener('online', function () { Sync.sync(state).then(adopt); });
+
+    // A pending debounce would otherwise be lost when the tab closes.
+    global.addEventListener('pagehide', function () {
+      if (Sync.isConnected() && Sync.isDirty(state)) Sync.flush(getState);
+    });
+
+    renderSync();
+    if (Sync.isConnected()) Sync.sync(state).then(adopt);
+  }
+
+  /**
+   * Take on a state that came back from a merge. Object identity changes, so the
+   * chart has to be rebuilt from scratch rather than repainted.
+   */
+  function adopt(merged) {
+    if (!merged || merged === state) { renderSync(); return; }
+
+    state = merged;
+    el.dob.value = state.dob || '';
+    el.lifespan.value = state.lifespan;
+    el.palette.checked = state.palette === 'cbSafe';
+    builtKey = null;
+    render();
+    renderSync();
+  }
+
+  var SYNC_LABELS = {
+    off: 'Off',
+    ok: 'Synced',
+    syncing: 'Syncing…',
+    pending: 'Pending',
+    offline: 'Offline',
+    error: 'Error'
+  };
+
+  function renderSync() {
+    var status = Sync.status;
+    var connected = Sync.isConnected();
+    var config = Sync.config();
+
+    el.syncBadge.textContent = SYNC_LABELS[status.state] || status.state;
+    el.syncBadge.dataset.state = status.state;
+
+    el.syncConnect.hidden = connected;
+    el.syncActive.hidden = !connected;
+    el.btnSyncNow.disabled = status.busy;
+
+    if (connected) {
+      el.gistLink.href = 'https://gist.github.com/' + config.gistId;
+    }
+
+    if (status.message) {
+      el.syncSummary.textContent = status.message;
+    } else if (connected && config.lastSyncAt) {
+      el.syncSummary.textContent = 'Last synced ' + relativeTime(config.lastSyncAt) + '.';
+    } else if (!connected) {
+      el.syncSummary.textContent = 'Connect a GitHub token to keep this device and your ' +
+        'phone on the same log. Edits merge; nothing is overwritten.';
+    }
+  }
+
+  function relativeTime(at) {
+    var seconds = Math.round((Date.now() - at) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.round(seconds / 60) + ' min ago';
+    if (seconds < 86400) return Math.round(seconds / 3600) + ' h ago';
+    return prettyDate(LT.toKey(new Date(at)));
   }
 
   /* ------------------------------------------------------------------ *

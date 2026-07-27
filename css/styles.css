@@ -496,6 +496,102 @@ kbd {
 .field--actions .danger { color: var(--bad); border-color: var(--bad); }
 
 /* ------------------------------------------------------------------ *
+ * Sync
+ * ------------------------------------------------------------------ */
+
+.sync {
+  margin: 1rem 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.sync-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sync-badge {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.sync-badge[data-state="ok"] { color: var(--good); border-color: var(--good); }
+.sync-badge[data-state="error"] { color: var(--bad); border-color: var(--bad); }
+.sync-badge[data-state="pending"],
+.sync-badge[data-state="offline"],
+.sync-badge[data-state="syncing"] { color: var(--accent); border-color: var(--accent); }
+
+.sync .field { flex-wrap: wrap; margin-top: 0.8rem; }
+
+.sync input[type="password"] {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.sync button {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sync button:disabled { opacity: 0.5; cursor: default; }
+.sync .danger { color: var(--bad); border-color: var(--bad); }
+
+.sync #gistLink {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.sync-help {
+  margin-top: 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.sync-help summary { cursor: pointer; }
+.sync-help ol { margin: 0.6rem 0; padding-left: 1.2rem; }
+.sync-help li { margin-bottom: 0.3rem; }
+.sync-help code {
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+/* The token warning must not read as boilerplate — it is a real trade-off. */
+.warn {
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.7rem;
+  border-left: 3px solid var(--bad);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------ *
  * Credits
  * ------------------------------------------------------------------ */
 

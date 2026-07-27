@@ -53,28 +53,81 @@ A 29 February birthday falls on 1 March in non-leap years.
 ## Your data
 
 Everything lives in this browser's `localStorage` under `lifetime-tracking-v1`. There is no
-account, no server, and no network request after the page loads — this repo is public, your
-log is not.
-
-That also means the data is only on the device that made it, and clearing site data will
-delete it. **Export regularly.**
-
-To move a log between your laptop and your phone: **Export JSON** on one, **Import JSON** on
-the other. Imports *merge* — entries in the file win on conflict, everything already on the
-device survives — so it is safe in either direction.
+account and no server. This repo is public; your log is not.
 
 ```jsonc
 {
-  "version": 1,
+  "version": 2,
   "dob": "1998-03-15",
   "lifespan": 90,
   "palette": "classic",
-  "entries": { "2026-07-27": "good", "2026-07-26": "bad" }
+  "entries": { "2026-07-27": "good", "2026-07-26": "bad" },
+  "meta": {
+    "entries":  { "2026-07-27": 1753600000000 },  // when each day was last written
+    "settings": { "dob": 1753600000000 },
+    "hlc": 1753600000000
+  }
 }
 ```
 
 Marks are stored as `good` / `bad` rather than `green` / `red`, so switching to the
 colour-blind palette (blue/orange, in Settings) doesn't touch your data.
+
+A key present in `meta.entries` but absent from `entries` is a **tombstone** — a day you
+deliberately cleared. It has to be recorded, or a delete on one device would be quietly
+undone by another device that still remembered the day.
+
+## Syncing your laptop and your phone
+
+Optional, off by default. Turn it on in **Settings → Sync across devices** and both browsers
+stay on one log, using a **private GitHub Gist** as the store. No backend, no account beyond
+the GitHub one you already have.
+
+1. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new).
+   Give it no repository access and set **Account permissions → Gists → Read and write**.
+2. Paste it into Settings on the first device and press Connect. It creates a private gist.
+3. Paste the same token on the second device. It **finds the existing gist by itself** —
+   there is no gist ID to copy across.
+
+It syncs on load, when you return to the tab, when you come back online, a couple of seconds
+after an edit, and whenever you press Sync now.
+
+### Nothing gets overwritten
+
+The interesting case is logging on your phone and your laptop before either has synced. A
+naive "last device to upload wins" would throw one of those away. Instead the merge is a
+**CRDT**: every write carries a timestamp, and merging is commutative, associative and
+idempotent. So:
+
+- Different days logged on each device → **both survive**.
+- The same day marked differently → the **later** edit wins, and both devices agree on which.
+- A day cleared on one device → the clear propagates, rather than being resurrected.
+- Merging is safe to repeat in any order, so devices converge no matter who syncs when.
+
+`test/merge.test.js` checks those algebraic laws over 400 randomised state pairs, and
+`test/sync.test.js` runs two simulated devices against a fake Gist API.
+
+If two devices somehow push in the same instant and one overwrites the other, the loser still
+holds its own entry locally with its own timestamp — its next sync merges it back in. The
+data heals itself.
+
+### About the token
+
+It is kept in `localStorage` on each device so it survives a reload, and it is **never
+written to the gist**. But be clear-eyed about it: anyone with access to that device could
+read it, and the token can read and write *all* of your gists, not just this one. Use a
+fine-grained token with an expiry, keep it off shared machines, and revoke it from GitHub
+settings if you stop using the app.
+
+There is no better option without a backend — GitHub's OAuth device flow can't complete from
+a browser, because its token endpoint sends no CORS headers.
+
+### Without sync
+
+Export/Import JSON still works and needs no token. Imports go through the same merge as sync,
+so they're safe in either direction and won't clobber what's already on the device.
+
+Whichever route you use: clearing site data deletes the local copy, so **export occasionally**.
 
 ## Running it
 
@@ -101,29 +154,40 @@ and zero rupees. Build a real APK only if you later want daily reminder notifica
 ```
 index.html              markup and static copy
 css/styles.css          all styling; colours are CSS custom properties
-js/core.js              date maths, storage, aggregation — no DOM
+js/core.js              date maths, storage, aggregation, merge — no DOM
+js/sync.js              GitHub Gist transport; no conflict logic of its own
 js/app.js               rendering and event wiring
 sw.js                   service worker (offline + installable)
 manifest.webmanifest    PWA metadata
 icons/                  generated PNG app icons
 tools/make_icons.py     regenerates those icons (stdlib only)
-test/core.test.js       66 assertions over the date maths and roll-up
+test/                   179 assertions; see below
 ```
 
-`core.js` touches no DOM, which is what makes the roll-up logic testable on its own:
+`core.js` touches no DOM, and `sync.js` contains no conflict logic — that lives in
+`core.mergeStates`. Both facts are what make this testable without a browser:
 
 ```sh
-node test/core.test.js
+./test/run.sh
 
-# the date handling is timezone-sensitive, so it's worth running elsewhere too
-TZ=Asia/Kolkata     node test/core.test.js
-TZ=America/New_York node test/core.test.js   # DST
-TZ=Pacific/Auckland node test/core.test.js   # southern-hemisphere DST
+# the date handling is timezone-sensitive, so it is worth running elsewhere too
+TZ=Asia/Kolkata     ./test/run.sh
+TZ=America/New_York ./test/run.sh   # DST
+TZ=Pacific/Auckland ./test/run.sh   # southern-hemisphere DST
 ```
 
-The suite covers DST-safe day counting, leap years, 29 February birthdays, week/month
-clamping at the end of a life-year, tie propagation, streaks across gaps, and rejection of
-malformed imported data.
+| Suite | | Covers |
+|---|---:|---|
+| `core.test.js` | 66 | DST-safe day counting, leap years, 29 Feb birthdays, week/month clamping at the end of a life-year, tie propagation, streaks across gaps, malformed input |
+| `merge.test.js` | 31 | Tombstones, v1 migration, and the CRDT laws over 400 randomised state pairs |
+| `sync.test.js` | 38 | Two simulated devices against a fake Gist API: offline edits, conflicts, deletes, 304s, truncated gists, 401/403/404, corrupt remote data |
+| `ui.test.js` | 44 | The real `index.html` booted in jsdom — logging, connect, pull, disconnect, erase, offline |
+
+`ui.test.js` needs jsdom and skips cleanly without it; nothing else has dependencies:
+
+```sh
+npm i jsdom && NODE_PATH=./node_modules ./test/run.sh
+```
 
 ### A note on the rendering split
 

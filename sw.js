@@ -5,13 +5,14 @@
  * install and served cache-first. Bump CACHE whenever you ship a change,
  * otherwise returning visitors keep the old copy.
  */
-var CACHE = 'lifetime-tracking-v1';
+var CACHE = 'lifetime-tracking-v2';
 
 var SHELL = [
   './',
   './index.html',
   './css/styles.css',
   './js/core.js',
+  './js/sync.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -40,6 +41,12 @@ self.addEventListener('activate', function (event) {
 
 self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET') return;
+
+  // Leave anything cross-origin completely alone. In practice that means the
+  // GitHub API: sync must always see the live gist and a real 304, never a
+  // replayed cache entry, and routing authenticated CORS requests back through
+  // the worker buys nothing.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request).then(function (cached) {
