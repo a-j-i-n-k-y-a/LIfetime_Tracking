@@ -18,21 +18,21 @@
  * ------------------------------------------------------------------ */
 
 :root {
-  --bg: #efe8df;              /* alabaster — the sheet */
-  --surface: rgba(255, 253, 250, 0.5);
-  --border: rgba(15, 65, 74, 0.18);
-  --text: #0f414a;            /* midnight blue, used as the ink */
-  --muted: #4f676d;
-  --accent: #0f414a;
+  --bg: #e2d9bc;              /* sand — the sheet */
+  --surface: rgba(255, 252, 240, 0.42);
+  --border: rgba(104, 54, 41, 0.22);
+  --text: #683629;            /* brown, used as the ink */
+  --muted: #7d6a54;
+  --accent: #683629;
 
-  --good: #0f414a;            /* midnight blue: the poster's solid cells */
-  --bad: #7f0303;             /* maroon */
-  --tie: #96c0ce;             /* light blue — a genuine middle, not a grey */
-  --past: #d8ba98;            /* tan: lived, nothing recorded */
+  --good: #80abd7;            /* blue */
+  --bad: #b20e19;             /* red */
+  --tie: #9c8f7c;             /* a warm neutral: genuinely neither */
+  --past: #cfc4a6;            /* lived, nothing recorded */
   --future: transparent;      /* unlived cells are an outline only */
-  --future-line: rgba(15, 65, 74, 0.32);
+  --future-line: rgba(104, 54, 41, 0.34);
 
-  --grain: 0.5;
+  --grain: 0.45;
   --fibre: 0.1;
   --grain-blend: multiply;
 
@@ -40,13 +40,13 @@
   --gap: 0.25rem;
 }
 
-/* Midnight blue against maroon already survives red-green colour blindness,
-   since it differs in hue *and* lightness. This swaps the red for an amber, so
-   the pair also separates for anyone who struggles with blue. */
+/* Blue against red already survives red-green colour blindness, since the two
+   differ in hue and in lightness. This swaps the red for a burnt orange so the
+   pair also separates for anyone whose difficulty is blue. */
 body[data-palette="cbSafe"] {
-  --good: #0f414a;
-  --bad: #b35c00;
-  --tie: #96c0ce;
+  --good: #80abd7;
+  --bad: #a8551b;
+  --tie: #9c8f7c;
 }
 
 /* Toned paper rather than a slab of black, so the texture still reads.
@@ -60,18 +60,18 @@ body[data-palette="cbSafe"] {
  * The default is neither: it is paper, whatever the OS prefers.
  */
 :root[data-theme="dark"] {
-  --bg: #0b323a;
-  --surface: rgba(239, 232, 223, 0.05);
-  --border: rgba(239, 232, 223, 0.18);
-  --text: #efe8df;
-  --muted: #97b3ba;
-  --accent: #efe8df;
+  --bg: #3b2019;              /* the brown, deepened into a sheet */
+  --surface: rgba(226, 217, 188, 0.06);
+  --border: rgba(226, 217, 188, 0.2);
+  --text: #e2d9bc;
+  --muted: #a8977c;
+  --accent: #e2d9bc;
 
-  --good: #96c0ce;            /* light blue reads as the positive on dark */
-  --bad: #c2413a;             /* maroon lifted enough to stay legible */
-  --tie: #6d8d95;
-  --past: #16454e;
-  --future-line: rgba(239, 232, 223, 0.24);
+  --good: #80abd7;
+  --bad: #d8434c;             /* red lifted enough to stay legible on brown */
+  --tie: #9c8f7c;
+  --past: #563025;
+  --future-line: rgba(226, 217, 188, 0.26);
 
   --grain: 0.3;
   --fibre: 0.09;
@@ -79,32 +79,32 @@ body[data-palette="cbSafe"] {
 }
 
 :root[data-theme="dark"] body[data-palette="cbSafe"] {
-  --good: #96c0ce;
-  --bad: #e0794a;
+  --good: #80abd7;
+  --bad: #d8894a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
-    --bg: #0b323a;
-    --surface: rgba(239, 232, 223, 0.05);
-    --border: rgba(239, 232, 223, 0.18);
-    --text: #efe8df;
-    --muted: #97b3ba;
-    --accent: #efe8df;
+    --bg: #3b2019;              /* the brown, deepened into a sheet */
+    --surface: rgba(226, 217, 188, 0.06);
+    --border: rgba(226, 217, 188, 0.2);
+    --text: #e2d9bc;
+    --muted: #a8977c;
+    --accent: #e2d9bc;
 
-    --good: #96c0ce;            /* light blue reads as the positive on dark */
-    --bad: #c2413a;             /* maroon lifted enough to stay legible */
-    --tie: #6d8d95;
-    --past: #16454e;
-    --future-line: rgba(239, 232, 223, 0.24);
+    --good: #80abd7;
+    --bad: #d8434c;             /* red lifted enough to stay legible on brown */
+    --tie: #9c8f7c;
+    --past: #563025;
+    --future-line: rgba(226, 217, 188, 0.26);
 
     --grain: 0.3;
     --fibre: 0.09;
     --grain-blend: overlay;
   }
   body[data-palette="cbSafe"] {
-    --good: #96c0ce;
-    --bad: #e0794a;
+    --good: #80abd7;
+    --bad: #d8894a;
   }
 }
 

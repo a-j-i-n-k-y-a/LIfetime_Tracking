@@ -37,7 +37,7 @@ Two things follow from counting *verdicts* rather than raw days:
 - A month is decided by its weeks, not its days. Three good weeks with one logged day each
   beat one rough week with twenty — the month is good. This is what you asked for, and it
   means a single terrible stretch can't drag down a month that was otherwise fine.
-- An exact split is a **tie** (light blue), and a tie doesn't vote in the level above it.
+- An exact split is a **tie** (a warm neutral), and a tie doesn't vote in the level above it.
   Neither does a period with nothing logged. Blank stays blank all the way up.
 
 ### The calendar approximations
@@ -86,19 +86,22 @@ not lived yet are an outline only; logged ones are solid. The paper grain is two
 noise fields — fine tooth over long fibres — so it costs nothing to download and works
 offline like the rest of the app.
 
-Five colours do all the work:
+Four colours do all the work:
 
 | | | |
 |---|---|---|
-| Alabaster | `#efe8df` | the sheet |
-| Midnight blue | `#0f414a` | the ink — headings, rules, and a **good** day |
-| Maroon | `#7f0303` | a **rough** day |
-| Light blue | `#96c0ce` | an **even split** |
-| Tan | `#d8ba98` | **lived, nothing recorded** |
+| Sand | `#e2d9bc` | the sheet |
+| Brown | `#683629` | the ink — headings, rules, outlines |
+| Blue | `#80abd7` | a **good** day |
+| Red | `#b20e19` | a **rough** day |
 
-Phase markers are drawn from the same family but never use pure midnight or pure maroon —
-those two mean good and rough, and a phase marker must not be mistaken for a cell. Dark mode
-turns the palette inside out: midnight becomes the paper and light blue becomes the ink.
+Two are derived from them: a warm neutral `#9c8f7c` for an **even split**, and a paler sand
+`#cfc4a6` for **lived, nothing recorded**.
+
+Phase markers walk the same family from cool to warm across a life, but never use the exact
+blue or red — those two mean good and rough, and a phase marker must not be mistaken for a
+cell. Dark mode turns the palette inside out: the brown becomes the sheet and the sand
+becomes the ink.
 
 Because phases are stored with your data, changing the defaults doesn't recolour phases you
 already have. **Settings → Reset to defaults** picks up the new set.

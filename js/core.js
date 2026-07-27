@@ -155,15 +155,16 @@
   // and pure midnight are deliberately absent: those two mean "rough day" and
   // "good day", and a phase marker must never be mistaken for a cell.
   var DEFAULT_PHASES = [
-    { label: 'Childhood',   from: 0,  to: 13, color: '#96c0ce' },
-    { label: 'Teenage',     from: 13, to: 20, color: '#5f97a4' },
-    { label: 'College',     from: 20, to: 23, color: '#2b6470' },
-    { label: 'Twenties',    from: 23, to: 30, color: '#d8ba98' },
-    { label: 'Thirties',    from: 30, to: 40, color: '#bf9264' },
-    { label: 'Forties',     from: 40, to: 50, color: '#a8604a' },
-    { label: 'Fifties',     from: 50, to: 60, color: '#8d4038' },
-    { label: 'Later years', from: 60, to: 90, color: '#8a8279' }
+    { label: 'Childhood',   from: 0,  to: 13, color: '#a7c4e0' },
+    { label: 'Teenage',     from: 13, to: 20, color: '#6e96c2' },
+    { label: 'College',     from: 20, to: 23, color: '#46688f' },
+    { label: 'Twenties',    from: 23, to: 30, color: '#c9b98f' },
+    { label: 'Thirties',    from: 30, to: 40, color: '#b08a5e' },
+    { label: 'Forties',     from: 40, to: 50, color: '#96603c' },
+    { label: 'Fifties',     from: 50, to: 60, color: '#7a4433' },
+    { label: 'Later years', from: 60, to: 90, color: '#8a7f6e' }
   ];
+
 
   /**
    * State shape (v2):
@@ -207,7 +208,7 @@
       label: String(raw.label == null ? '' : raw.label).slice(0, 40),
       from: from,
       to: to,
-      color: HEX_RE.test(raw.color) ? raw.color : '#8a8279'
+      color: HEX_RE.test(raw.color) ? raw.color : '#8a7f6e'
     };
   }
 

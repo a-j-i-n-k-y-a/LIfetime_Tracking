@@ -9,3 +9,7 @@ android/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Generated personal data — never commit
+backfill*.json
+*-export.json
